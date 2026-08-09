@@ -325,7 +325,7 @@ tbody tr:last-child td{border-bottom:none}
  </div></div>
  <div id="intakeCtl"></div>
  <div class="gr g4" id="dashStat"></div>
- <div class="card" style="margin-top:18px"><h3>ผลตาม KPI ยุทธศาสตร์</h3><div class="sb">แยกตามตัวชี้วัดยุทธศาสตร์ — แต่ละ KPI มีโครงการอะไรบ้าง งบเท่าไหร่ ตัวชี้วัดความสำเร็จของโครงการ และความคืบหน้าล่าสุด</div><div id="dashKpi"></div></div>
+ <div class="card" style="margin-top:18px"><h3>ผลตาม ตัวชี้วัด KPI</h3><div class="sb">แยกตามตัวชี้วัดยุทธศาสตร์ — แต่ละ KPI มีโครงการอะไรบ้าง งบเท่าไหร่ ตัวชี้วัดความสำเร็จของโครงการ และความคืบหน้าล่าสุด</div><div id="dashKpi"></div></div>
 </section>
 
 <section class="pg" id="pg-reg">
@@ -3103,7 +3103,7 @@ function paintMine(){
  const ps=owned(),open=isOpen(FY);
  const bn=$('btnNew');if(bn){bn.disabled=!open;bn.title=open?'':'เลขานุการยังไม่เปิดรับข้อเสนอ'}
  let banner=open
-  ? `<div class="note"><b>เปิดรับข้อเสนอโครงการ ปีงบประมาณ ${FY} แล้ว</b> — กดปุ่ม “เสนอโครงการใหม่” เพื่อกรอกแบบฟอร์ม และเลือก KPI ยุทธศาสตร์</div>`
+  ? `<div class="note"><b>เปิดรับข้อเสนอโครงการ ปีงบประมาณ ${FY} แล้ว</b> — กดปุ่ม “เสนอโครงการใหม่” เพื่อกรอกแบบฟอร์ม และเลือก ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน</div>`
   : `<div class="note i"><b>ยังไม่เปิดรับข้อเสนอโครงการ ปีงบประมาณ ${FY}</b> — กรุณารอเลขานุการเปิดรับก่อน</div>`;
  const appr=ps.filter(p=>['running','closed'].includes(p.status));
  if(appr.length)banner+=`<div class="note"><b>โครงการที่ได้รับอนุมัติแล้ว — ไปที่เมนู “รายงานความคืบหน้า” เพื่อกรอกรายงาน</b><div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:8px">${appr.map(p=>`<span class="b acc"><span class="cd" style="color:inherit">${p.code}</span> · ${es(p.name).slice(0,30)}${p.name.length>30?'…':''}</span>`).join('')}</div></div>`;
@@ -3605,7 +3605,7 @@ function printProjectDoc(id){
    ${row('จำนวนผู้เข้าร่วม',p.participants?es(p.participants):'—')}
    ${row('กำหนดวันจัดโครงการ',p.eventDate?es(p.eventDate):'—')}
    ${row('จำนวนครั้งที่จัด',(p.times||1)+' ครั้ง')}
-   ${row('KPI ยุทธศาสตร์',es(kpiTxt))}
+   ${row('ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน',es(kpiTxt))}
    ${row('งบประมาณที่ขอ',mn(bReq)+' บาท')}
    ${row('งบประมาณที่อนุมัติ',bApp!=null?mn(bApp)+' บาท':'— (ยังไม่ผ่านมติอนุมัติ)')}
    ${row('สถานะโครงการ',ST[p.status]?ST[p.status].t:es(p.status))}
@@ -3661,7 +3661,7 @@ function paintSummary(){
    <th style="min-width:170px">ประโยชน์ที่ได้รับ</th>
    <th style="min-width:100px">กำหนดเวลา</th>
    <th class="num" style="width:110px">งบประมาณ</th>
-   <th style="min-width:160px">KPI ยุทธศาสตร์</th>
+   <th style="min-width:160px">ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน</th>
    <th style="min-width:130px">ตัวชี้วัด</th>
   </tr></thead>
   <tbody>${ps.map((p,i)=>`<tr style="cursor:pointer" onclick="openP('${p.id}')">
@@ -3801,7 +3801,7 @@ function printSummary(){
      <th style="width:120px">ประโยชน์ที่ได้รับ</th>
      <th style="width:75px">กำหนดเวลา</th>
      <th style="width:80px">งบประมาณ</th>
-     <th style="width:130px">KPI ยุทธศาสตร์</th>
+     <th style="width:130px">ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน</th>
      <th style="width:120px">ตัวชี้วัด</th>
     </tr>
    </thead>
@@ -4012,7 +4012,7 @@ function paintSettings(){
    <div class="note ${open?'':'i'}" style="margin-bottom:12px">สถานะปัจจุบัน: <b>${open?'กำลังเปิดรับข้อเสนอ':'ปิดรับข้อเสนอ'}</b></div>
    <button class="btn ${open?'g':'a'}" onclick="toggleIntake();paintSettings()">${open?'ปิดรับข้อเสนอ':'เปิดรับข้อเสนอ'}</button></div>
   <div class="card"><h3>ผู้ใช้งานและสิทธิ์ / KPI</h3>
-   <div class="sb">จัดการรายชื่อผู้ใช้งาน กำหนดสิทธิ์ (หัวหน้าโครงการ · เลขานุการ · ผู้บริหาร) และรายการ KPI ยุทธศาสตร์</div>
+   <div class="sb">จัดการรายชื่อผู้ใช้งาน กำหนดสิทธิ์ (หัวหน้าโครงการ · เลขานุการ · ผู้บริหาร) และรายการ ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน</div>
    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
     <button class="btn a" onclick="openPersons()">ทะเบียนบุคลากรและการกำหนดสิทธิ์</button>
     <button class="btn g" onclick="openKpis()">จัดการรายการ KPI</button></div></div>
@@ -4163,7 +4163,7 @@ function openP(i){
   <dt>สถานะ</dt><dd><span class="b ${ST[p.status].c}">${ST[p.status].t}</span> &nbsp;<span class="dt ${l.c}"></span>${l.t}</dd>
   <dt>ผู้รับผิดชอบหลัก</dt><dd>${es(p.owner)}</dd>
   ${p.team&&p.team.length?`<dt>คณะทำงาน</dt><dd style="font-weight:400">${es([].concat(p.team).join(', '))}</dd>`:''}
-  <dt>KPI ยุทธศาสตร์</dt><dd>${ROLE==='sec'?`<select onchange="setKpi('${p.id}',this.value)" style="border:1px solid var(--line2);border-radius:7px;padding:5px 9px;background:#fff;font-weight:400">${Object.entries(KPIS).map(([k,v])=>`<option value="${k}" ${p.kpi===k?'selected':''}>${k==='NA'?'ยังไม่ระบุ':k+' — '+v.slice(0,34)}</option>`).join('')}</select>`:`<span class="kpi">${p.kpi==='NA'?'ยังไม่ระบุ':p.kpi}</span> ${es(KPIS[p.kpi||'NA'])}`}</dd>
+  <dt>ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน</dt><dd>${ROLE==='sec'?`<select onchange="setKpi('${p.id}',this.value)" style="border:1px solid var(--line2);border-radius:7px;padding:5px 9px;background:#fff;font-weight:400">${Object.entries(KPIS).map(([k,v])=>`<option value="${k}" ${p.kpi===k?'selected':''}>${k==='NA'?'ยังไม่ระบุ':k+' — '+v.slice(0,34)}</option>`).join('')}</select>`:`<span class="kpi">${p.kpi==='NA'?'ยังไม่ระบุ':p.kpi}</span> ${es(KPIS[p.kpi||'NA'])}`}</dd>
   <dt>กำหนดวันจัดโครงการ</dt><dd style="font-weight:400">${p.eventDate?es(p.eventDate):'<span style="color:var(--ink3)">ยังไม่ระบุ</span>'}</dd>
   <dt>จำนวนครั้งที่จัด</dt><dd style="font-weight:400">${p.times||1} ครั้ง · จัดแล้ว ${timesDone(p)} ครั้ง</dd>
   ${p.location?`<dt>สถานที่จัด</dt><dd style="font-weight:400">${es(p.location)}</dd>`:''}
@@ -4214,7 +4214,7 @@ function openP(i){
  $('dwB').innerHTML=h;$('dw').classList.add('on');$('mask').classList.add('on');
 }
 function closeDW(){$('dw').classList.remove('on');$('mask').classList.remove('on')}
-function setKpi(i,k){const p=gid(i);const o=p.kpi;p.kpi=k;hist(p,'ปรับ KPI ยุทธศาสตร์',`${o==='NA'?'ยังไม่ระบุ':o} → ${k==='NA'?'ยังไม่ระบุ':k}`);log('ปรับ KPI',p.code,k);save();paint();toast('บันทึก KPI แล้ว')}
+function setKpi(i,k){const p=gid(i);const o=p.kpi;p.kpi=k;hist(p,'ปรับ ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน',`${o==='NA'?'ยังไม่ระบุ':o} → ${k==='NA'?'ยังไม่ระบุ':k}`);log('ปรับ KPI',p.code,k);save();paint();toast('บันทึก KPI แล้ว')}
 function hist(p,h,m){p.history=p.history||[];p.history.push({ts:new Date().toISOString(),by:USER,h,m})}
 
 function openNew(id){
@@ -4443,7 +4443,7 @@ function importPersons(input){
 }
 function openKpis(){
  if(!DB.kpis||!Object.keys(DB.kpis).length)DB.kpis={...KPIS};
- $('mdT').textContent='จัดการตัวชี้วัด KPI ยุทธศาสตร์';
+ $('mdT').textContent='จัดการตัวชี้วัด ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน';
  const rows=Object.entries(DB.kpis).filter(([k])=>k!=='NA').map(([k,v])=>{
   const used=DB.projects.some(p=>p.kpi===k);
   return `<div class="sub"><div class="nm"><b>${es(k)}</b><small>${es(v)}</small></div>${used?'<span class="b gray">ใช้อยู่</span>':`<button class="btn s g" onclick="delKpi('${es(k)}')">ลบ</button>`}</div>`;
@@ -4507,7 +4507,7 @@ function openRes(id){
    </div></div>
   <div id="rvOk">
    <div class="f"><label>งบประมาณที่อนุมัติ (บาท) <i>*</i></label><input type="number" id="rb" value="${p.budgetRequested}"><div class="hint">ปกติเท่ากับที่ขอ หากที่ประชุมปรับลด ให้แก้ตัวเลข ระบบจะบันทึกส่วนต่างในประวัติ</div></div>
-   <div class="f"><label>KPI ยุทธศาสตร์ (หากที่ประชุมกำหนด)</label><select id="rk">${Object.entries(KPIS).map(([k,v])=>`<option value="${k}" ${p.kpi===k?'selected':''}>${k==='NA'?'ยังไม่ระบุ':k+' — '+v}</option>`).join('')}</select></div>
+   <div class="f"><label>ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน (หากที่ประชุมกำหนด)</label><select id="rk">${Object.entries(KPIS).map(([k,v])=>`<option value="${k}" ${p.kpi===k?'selected':''}>${k==='NA'?'ยังไม่ระบุ':k+' — '+v}</option>`).join('')}</select></div>
    <div class="f"><label>เงื่อนไขแนบท้ายมติ (ถ้ามี)</label><textarea id="rc" placeholder="เว้นว่างได้">${es(p.condition||'')}</textarea></div>
   </div>
   <div class="f" id="rnW" style="display:none"><label>เหตุผลที่ไม่อนุมัติ <i>*</i></label><textarea id="rn"></textarea></div>`;
@@ -4607,7 +4607,7 @@ function openShow(kind){
     </div>
     <div>
      <div class="sh-x"><div style="font-size:12.5px;color:var(--ink2)">งบประมาณที่ขออนุมัติ</div><div class="sh-n">${mn(p.budgetRequested)}</div><div style="font-size:12.5px;color:var(--ink2)">บาท</div></div>
-     <div class="sh-x"><div style="font-size:12.5px;color:var(--ink2)">KPI ยุทธศาสตร์</div>
+     <div class="sh-x"><div style="font-size:12.5px;color:var(--ink2)">ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน</div>
       <div style="font-weight:600;color:var(--navy);margin-top:2px">${p.kpi==='NA'?'-':p.kpi}</div>
       ${p.kpi==='NA'?'':`<div style="font-size:12.5px;color:var(--ink2)">${es(KPIS[p.kpi]||'')}</div>`}</div>
      <div class="sh-x"><div style="font-size:12.5px;color:var(--ink2)">มติที่ประชุม</div><div style="height:34px;border-bottom:1px dotted var(--line2)"></div></div>
@@ -4665,9 +4665,9 @@ function openShow(kind){
     .map(([k,v])=>`<div><div style="font-size:13px;color:var(--ink2)">${k}</div><div class="sh-n">${v}</div></div>`).join('')}</div></div>`);
 
   const kg={};list.forEach(p=>{const k=p.kpi||'NA';kg[k]=kg[k]||{n:0,b:0,s:0};kg[k].n++;kg[k].b+=p.budgetApproved||0;kg[k].s+=spent(p)});
-  sheets.push(`<div class="sheet">${head('ผลตาม KPI ยุทธศาสตร์','ภาพรวมทั้งปี')}
+  sheets.push(`<div class="sheet">${head('ผลตาม ตัวชี้วัด (KPI) ของศูนย์ฯ ที่โครงการนี้สนับสนุน','ภาพรวมทั้งปี')}
    <h4>ผลการดำเนินงานจำแนกตาม KPI</h4>
-   <div style="margin-top:18px;overflow:hidden"><table style="font-size:13.5px"><thead><tr><th>KPI</th><th>ตัวชี้วัด</th><th class="num">โครงการ</th><th class="num">งบที่อนุมัติ</th><th class="num">ใช้จริง</th></tr></thead><tbody>
+   <div style="margin-top:18px;overflow:hidden"><table style="font-size:13.5px"><thead><tr><th>KPI</th><th>ตัวชี้วัดโครงการ</th><th class="num">โครงการ</th><th class="num">งบที่อนุมัติ</th><th class="num">ใช้จริง</th></tr></thead><tbody>
    ${Object.entries(kg).map(([k,v])=>`<tr><td><span class="kpi">${k==='NA'?'ไม่ระบุ':k}</span></td><td>${es(KPIS[k])}</td><td class="num">${v.n}</td><td class="num">${mn(v.b)}</td><td class="num">${mn(v.s)}</td></tr>`).join('')}
    </tbody></table></div></div>`);
 
