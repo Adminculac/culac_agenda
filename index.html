@@ -4248,7 +4248,7 @@ function openNew(id){
   <div class="f"><label>ประโยชน์ที่คาดว่าจะได้รับ</label><textarea id="fben" rows="5" style="min-height:120px">${V('benefit')}</textarea></div>
   <div style="border-top:1px dashed var(--line2);margin:18px 0 8px;padding-top:14px;font-weight:600;color:var(--navy)">ข้อมูลสำหรับการติดตาม/รายงาน</div>
   <div class="f"><label style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">ตัวชี้วัด (SDA) ของศูนย์ฯ ที่โครงการนี้สนับสนุน <i>*</i>
-    <button type="button" class="btn g s" style="flex:0 0 auto;padding:3px 10px;font-weight:400" onclick="toggleKpiHelp(this)">ดูรายละเอียด KPI ทั้งหมด ▾</button></label>
+    <button type="button" class="btn g s" style="flex:0 0 auto;padding:3px 10px;font-weight:400" onclick="toggleKpiHelp(this)">ดูรายละเอียด SDA ทั้งหมด ▾</button></label>
    <div id="kpiHelp" class="note i" style="display:none;margin-bottom:8px"><b>ตัวชี้วัดยุทธศาสตร์ศูนย์ฯ</b>
     <div style="margin-top:6px;display:grid;gap:5px">${Object.entries(KPIS).filter(([k])=>k!=='NA').map(([k,v])=>`<div style="display:flex;gap:8px;align-items:flex-start"><span class="kpi" style="flex:0 0 auto">${k}</span><span style="font-size:13px">${es(v)}</span></div>`).join('')}</div></div>
    <select id="fk">${Object.entries(KPIS).map(([k,v])=>`<option value="${k}" ${p&&p.kpi===k?'selected':''}>${k==='NA'?'ยังไม่ระบุ':k+' — '+v}</option>`).join('')}</select></div>
@@ -4271,7 +4271,7 @@ function addTeamMember(){
  sel.value='';renderTeamChips();
 }
 function rmTeamMember(i){TEAM_SEL.splice(i,1);renderTeamChips();}
-function toggleKpiHelp(btn){const h=$('kpiHelp');if(!h)return;const on=h.style.display==='none';h.style.display=on?'block':'none';if(btn)btn.textContent=on?'ซ่อนรายละเอียด KPI ▴':'ดูรายละเอียด KPI ทั้งหมด ▾';}
+function toggleKpiHelp(btn){const h=$('kpiHelp');if(!h)return;const on=h.style.display==='none';h.style.display=on?'block':'none';if(btn)btn.textContent=on?'ซ่อนรายละเอียด KPI ▴':'ดูรายละเอียด SDA ทั้งหมด ▾';}
 function saveP(id){
  const g=i=>$(i).value.trim();
  const name=g('fn'),obj=g('fob'),bud=+$('fb').value||0,times=+$('ftimes').value||0;
