@@ -3243,8 +3243,8 @@ function paintDash(){
 
 function paintReg(){
  const qs=$('qs'),qk=$('qk');
- if(qs.options.length<2)qs.innerHTML='<option value="">ทุกสถานะ</option>'+Object.entries(ST).map(([k,v])=>`<option value="${k}">${v.t}</option>`).join('');
- if(qk.options.length<2)qk.innerHTML='<option value="">ทุก KPI</option>'+Object.keys(KPIS).map(k=>`<option value="${k}">${k==='NA'?'ยังไม่ระบุ':k}</option>`).join('');
+ if(qs.options.length<2)qs.innerHTML='<option value="">สถานะ</option>'+Object.entries(ST).map(([k,v])=>`<option value="${k}">${v.t}</option>`).join('');
+ if(qk.options.length<2)qk.innerHTML='<option value="">SDA</option>'+Object.keys(KPIS).map(k=>`<option value="${k}">${k==='NA'?'ยังไม่ระบุ':k}</option>`).join('');
  const ps=regSet();
  const tc=$('regTableCard');if(tc)tc.style.display=ps.length?'block':'none';
  $('regTable').innerHTML=ps.length?regTableHTML(ps,'รายงานความคืบหน้าโครงการ (รวม '+ps.length+' โครงการ)'):'';
