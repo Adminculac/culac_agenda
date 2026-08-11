@@ -4271,7 +4271,7 @@ function addTeamMember(){
  sel.value='';renderTeamChips();
 }
 function rmTeamMember(i){TEAM_SEL.splice(i,1);renderTeamChips();}
-function toggleKpiHelp(btn){const h=$('kpiHelp');if(!h)return;const on=h.style.display==='none';h.style.display=on?'block':'none';if(btn)btn.textContent=on?'ซ่อนรายละเอียด KPI ▴':'ดูรายละเอียด SDA ทั้งหมด ▾';}
+function toggleKpiHelp(btn){const h=$('kpiHelp');if(!h)return;const on=h.style.display==='none';h.style.display=on?'block':'none';if(btn)btn.textContent=on?'ซ่อนรายละเอียด SDA ▴':'ดูรายละเอียด SDA ทั้งหมด ▾';}
 function saveP(id){
  const g=i=>$(i).value.trim();
  const name=g('fn'),obj=g('fob'),bud=+$('fb').value||0,times=+$('ftimes').value||0;
