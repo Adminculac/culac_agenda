@@ -336,7 +336,7 @@ tbody tr:last-child td{border-bottom:none}
  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
   <input id="q" placeholder="ค้นหาชื่อโครงการหรือรหัส" oninput="paintReg()" style="flex:1;min-width:220px;border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff">
   <select id="qs" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="">ทุกสถานะ</option></select>
-  <select id="qk" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="">ทุก SDA</option></select>
+  <select id="qk" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="">ทุก KPI</option></select>
  </div>
  <div class="card" id="regTableCard" style="padding-top:10px"><div id="regTable"></div></div>
  <div id="regList"></div>
@@ -4480,7 +4480,7 @@ function openNew(id){
     <div class="hint">เลือกชื่อแล้วกด “เพิ่ม” · เลือกได้หลายคน</div></div>
   <div class="f"><label>สถานที่จัดโครงการ</label><input id="floc" value="${V('location')}" placeholder="เช่น ห้องประชุมศูนย์สัตว์ทดลอง"></div>
   <div class="gr g2">
-   <div class="f"><label>งบประมาณ (บาท) <i>*</i></label><input type="number" id="fb" min="0" step="100" value="${p?p.budgetRequested:''}" placeholder="เช่น 300000" style="text-align:right;font-weight:600" ${locked?'disabled':''}></div>
+   <div class="f"><label>งบประมาณ (บาท) <i>*</i></label><input type="number" id="fb" min="0" step="100" value="${p?p.budgetRequested:''}" placeholder="เช่น 300000 (ใส่ 0 ได้ถ้าไม่มีค่าใช้จ่าย)" style="text-align:right;font-weight:600" ${locked?'disabled':''}></div>
    <div class="f"><label>จำนวนครั้งที่จัด <i>*</i></label><input type="number" id="ftimes" min="1" step="1" value="${p&&p.times?p.times:'1'}" style="text-align:right" ${locked?'disabled':''}><div class="hint">จัดครั้งเดียว เช่น งานปีใหม่ ใส่ 1</div></div>
   </div>
   ${locked?'<div class="note i">งบประมาณและจำนวนครั้งถูกล็อกตามมติที่ประชุมแล้ว แก้ไขได้เฉพาะรายละเอียดอื่น ๆ — หากต้องเปลี่ยนงบ/จำนวนครั้ง ต้องเสนอที่ประชุมพิจารณาใหม่</div>':''}
@@ -4526,7 +4526,7 @@ function saveP(id,submit){
   const miss=[];
   if(!name)miss.push('ชื่อโครงการ');
   if(!obj)miss.push('วัตถุประสงค์');
-  if(!(bud>=0))miss.push('งบประมาณ');
+  if(!(bud>=0)||$('fb').value.trim()==='')miss.push('งบประมาณ');
   if(!(times>=1))miss.push('จำนวนครั้งที่จัด (อย่างน้อย 1)');
   if(miss.length)return toast('ยังกรอกไม่ครบ: '+miss.join(', '));
  }else{
