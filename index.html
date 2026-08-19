@@ -4526,7 +4526,7 @@ function saveP(id,submit){
   const miss=[];
   if(!name)miss.push('ชื่อโครงการ');
   if(!obj)miss.push('วัตถุประสงค์');
-  if(!(bud>0))miss.push('งบประมาณ');
+  if(!(bud>=0))miss.push('งบประมาณ');
   if(!(times>=1))miss.push('จำนวนครั้งที่จัด (อย่างน้อย 1)');
   if(miss.length)return toast('ยังกรอกไม่ครบ: '+miss.join(', '));
  }else{
