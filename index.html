@@ -4466,6 +4466,7 @@ function openNew(id){
  const V=(k,d='')=>p&&p[k]!=null?es(p[k]):d;
  $('mdB').innerHTML=`
   <div class="f"><label>ชื่อโครงการ <i>*</i></label><input id="fn" value="${V('name')}" placeholder="เช่น โครงการอบรมจริยธรรมการใช้สัตว์ทดลอง"></div>
+  ${(ROLE==='sec'&&p)?`<div class="f"><label>รหัสโครงการ <span style="font-weight:400;color:var(--ink3)">(แก้ไขได้เฉพาะเลขานุการ — ใช้แก้กรณีเลขที่ซ้ำ/ผิดพลาด)</span></label><input id="fcode" value="${es(p.code)}" style="font-weight:600;color:var(--accent2)"></div>`:''}
   <div class="f"><label>หลักการและเหตุผล</label><textarea id="frat" rows="5" style="min-height:120px">${V('rationale')}</textarea></div>
   <div class="f"><label>วัตถุประสงค์ <i>*</i></label><textarea id="fob" rows="5" style="min-height:120px">${V('objective')}</textarea></div>
   <div class="f"><label>วิธีดำเนินการ</label><textarea id="fmeth" rows="5" style="min-height:120px">${V('method')}</textarea></div>
@@ -4522,6 +4523,13 @@ function saveP(id,submit){
  const existing=id?gid(id):null;
  const locked=!!(existing&&['running','closed'].includes(existing.status));
  if(locked)submit=null; // โครงการที่อนุมัติ/ปิดแล้ว ไม่มีแนวคิด "ส่ง" มีแค่บันทึกแก้ไข
+ let newCode=null;
+ if(ROLE==='sec'&&existing&&$('fcode')){
+  newCode=g('fcode');
+  if(!newCode)return toast('รหัสโครงการห้ามว่าง');
+  if(newCode!==existing.code&&DB.projects.some(x=>x.id!==existing.id&&x.code===newCode))
+   return toast('รหัสโครงการนี้ถูกใช้กับโครงการอื่นอยู่แล้ว: '+newCode);
+ }
  const name=g('fn'),obj=g('fob'),bud=+$('fb').value||0,times=+$('ftimes').value||0;
  if(locked||submit){
   const miss=[];
@@ -4541,6 +4549,7 @@ function saveP(id,submit){
  let savedId=id;
  if(id){
   const p=gid(id);Object.assign(p,data);
+  if(newCode!=null&&newCode!==p.code){log('แก้ไขรหัสโครงการ',p.code+' → '+newCode,'');p.code=newCode;}
   if(locked){hist(p,'แก้ไขรายละเอียดโครงการ','');log('แก้ไขรายละเอียดโครงการ',p.code,'');}
   else if(submit){
    if(!p.code||p.code===DRAFT_CODE)p.code=code(); // ร่างที่ยังไม่เคยมีเลขที่ -> ออกเลขที่จริงตอนกดส่งเป็นครั้งแรก
