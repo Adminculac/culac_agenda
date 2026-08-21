@@ -231,24 +231,18 @@ function sendNotifications_(list, overrideEmails){
               'ผู้เสนอ: ' + (p.owner||'') + '\n' +
               'งบที่ขอ: ' + fmtMoney_(p.budgetRequested) + ' บาท\n\n' +
               'กรุณาเข้าสู่ระบบเพื่อพิจารณาอนุมัติ';
-        var htmlBody =
-          '<div style="font-family:\'Sarabun\',Tahoma,sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #dbe2ee">' +
-           '<div style="background:linear-gradient(135deg,#14233f,#31507f);padding:26px;text-align:center">' +
-            '<div style="font-size:32px;margin-bottom:6px">📋</div>' +
-            '<div style="color:#fff;font-size:18px;font-weight:700">มีโครงการเสนอเข้ามาใหม่</div>' +
-            '<div style="color:#c3d0e6;font-size:13px;margin-top:4px">รอการพิจารณาจากคณะกรรมการบริหาร</div>' +
-           '</div>' +
-           '<div style="padding:24px 26px">' +
-            '<table style="width:100%;border-collapse:collapse;font-size:14.5px;color:#333">' +
-             '<tr><td style="padding:8px 0;color:#888;width:100px;vertical-align:top">รหัส</td><td style="padding:8px 0;font-weight:600">' + es_(p.code) + '</td></tr>' +
-             '<tr style="border-top:1px solid #eee"><td style="padding:8px 0;color:#888;vertical-align:top">ชื่อโครงการ</td><td style="padding:8px 0;font-weight:600">' + es_(p.name) + '</td></tr>' +
-             '<tr style="border-top:1px solid #eee"><td style="padding:8px 0;color:#888;vertical-align:top">ผู้เสนอ</td><td style="padding:8px 0">' + es_(p.owner) + '</td></tr>' +
-             '<tr style="border-top:1px solid #eee"><td style="padding:8px 0;color:#888;vertical-align:top">งบที่ขอ</td><td style="padding:8px 0;font-weight:700;color:#a8531a;font-size:16px">' + fmtMoney_(p.budgetRequested) + ' บาท</td></tr>' +
-            '</table>' +
-            '<div style="margin-top:20px;text-align:center;color:#666;font-size:13px">กรุณาเข้าสู่ระบบเพื่อพิจารณาอนุมัติ</div>' +
-           '</div>' +
-           '<div style="background:#f4f6fa;padding:12px;text-align:center;font-size:11.5px;color:#8592a8">ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย</div>' +
-          '</div>';
+        var htmlBody = emailShell_(
+          '#14233f', '#c3d0e6', '📋',
+          'มีโครงการเสนอเข้ามาใหม่',
+          'รอการพิจารณาจากคณะกรรมการบริหาร',
+          '' +
+           emailRow_('รหัส', es_(p.code)) +
+           emailRow_('ชื่อโครงการ', es_(p.name)) +
+           emailRow_('ผู้เสนอ', es_(p.owner)) +
+           emailRow_('งบที่ขอ', fmtMoney_(p.budgetRequested) + ' บาท', '#a8531a', '16px'),
+          'กรุณาเข้าสู่ระบบเพื่อพิจารณาอนุมัติ',
+          '#f4f6fa', '#8592a8'
+        );
         MailApp.sendEmail({ to: SEC_EMAIL, subject: 'มีโครงการเสนอเข้ามาใหม่ · ' + (p.code||''), body: textBody, htmlBody: htmlBody });
       } else if(n.type==='approved'){
         var toEmail = emails[p.owner];
@@ -262,32 +256,61 @@ function sendNotifications_(list, overrideEmails){
                 'ชื่อโครงการ: ' + (p.name||'') + '\n' +
                 'งบที่อนุมัติ: ' + budgetTxt + ' บาท\n\n' +
                 'ท่านสามารถเข้าสู่ระบบเพื่อเริ่มบันทึกผลการดำเนินงานได้แล้ว';
-          var htmlBody2 =
-            '<div style="font-family:\'Sarabun\',Tahoma,sans-serif;max-width:520px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #f3d9e4">' +
-             '<div style="background:linear-gradient(135deg,#e75480,#f6a8c6);padding:28px 26px;text-align:center">' +
-              '<div style="font-size:36px;margin-bottom:8px">🎉</div>' +
-              '<div style="color:#fff;font-size:18.5px;font-weight:700;line-height:1.55">โครงการของท่านได้รับการอนุมัติ<br>จากคณะกรรมการบริหาร ศูนย์สัตว์ทดลอง จุฬาฯ แล้ว</div>' +
-             '</div>' +
-             '<div style="padding:24px 26px">' +
-              '<div style="background:#fdf0f5;border:1px solid #f6c9dc;border-radius:10px;padding:11px 16px;margin-bottom:18px;text-align:center;color:#a13e64;font-weight:600;font-size:13.5px">' +
-               'การประชุม' + es_(meetingRef) + ' · วันที่ ' + dateThai +
-              '</div>' +
-              '<table style="width:100%;border-collapse:collapse;font-size:14.5px;color:#333">' +
-               '<tr><td style="padding:8px 0;color:#888;width:110px;vertical-align:top">รหัส</td><td style="padding:8px 0;font-weight:600">' + es_(p.code) + '</td></tr>' +
-               '<tr style="border-top:1px solid #f5e5ec"><td style="padding:8px 0;color:#888;vertical-align:top">ชื่อโครงการ</td><td style="padding:8px 0;font-weight:600">' + es_(p.name) + '</td></tr>' +
-               '<tr style="border-top:1px solid #f5e5ec"><td style="padding:8px 0;color:#888;vertical-align:top">งบที่อนุมัติ</td><td style="padding:8px 0;font-weight:700;color:#e75480;font-size:17px">' + budgetTxt + ' บาท</td></tr>' +
-              '</table>' +
-              '<div style="margin-top:22px;text-align:center;color:#666;font-size:13px;line-height:1.6">ท่านสามารถเข้าสู่ระบบเพื่อเริ่มบันทึกผลการดำเนินงานได้แล้ว</div>' +
-             '</div>' +
-             '<div style="background:#fdf0f5;padding:12px;text-align:center;font-size:11.5px;color:#c48b9f">ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย</div>' +
-            '</div>';
+          var htmlBody2 = emailShell_(
+            '#e75480', '#fbdce8', '🎉',
+            'โครงการของท่านได้รับการอนุมัติ<br>จากคณะกรรมการบริหาร ศูนย์สัตว์ทดลอง จุฬาฯ แล้ว',
+            '',
+            '' +
+             '<tr><td colspan="2" style="padding:0 0 16px 0">' +
+              '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td bgcolor="#fdf0f5" style="background-color:#fdf0f5;border:1px solid #f6c9dc;border-radius:10px;padding:11px 16px;text-align:center;color:#a13e64;font-weight:bold;font-size:13.5px;font-family:Tahoma,Arial,sans-serif">' +
+               'การประชุม' + es_(meetingRef) + ' &middot; วันที่ ' + dateThai +
+              '</td></tr></table>' +
+             '</td></tr>' +
+             emailRow_('รหัส', es_(p.code)) +
+             emailRow_('ชื่อโครงการ', es_(p.name)) +
+             emailRow_('งบที่อนุมัติ', budgetTxt + ' บาท', '#e75480', '17px'),
+            'ท่านสามารถเข้าสู่ระบบเพื่อเริ่มบันทึกผลการดำเนินงานได้แล้ว',
+            '#fdf0f5', '#c48b9f'
+          );
           MailApp.sendEmail({ to: toEmail, subject: 'โครงการของท่านได้รับการอนุมัติแล้ว · ' + (p.code||''), body: textBody2, htmlBody: htmlBody2 });
         }
       }
     }catch(mailErr){ /* ไม่ให้ปัญหาการส่งอีเมลกระทบการบันทึกข้อมูลหลัก */ }
   });
 }
-/** escape ค่าพื้นฐานก่อนใส่ใน HTML อีเมล กันอักขระพิเศษทำ layout พัง */
+
+/** โครงร่างอีเมล HTML แบบตาราง (table-based) — อีเมลไคลเอนต์ต่าง ๆ (โดยเฉพาะ Gmail) ตัด CSS gradient/background บน <div> ทิ้งเกือบทุกครั้ง
+ *  จึงต้องใช้ <table> + attribute bgcolor เพื่อให้สีพื้นหลังติดแน่นอนในทุกอีเมลไคลเอนต์ */
+function emailShell_(headColor, subTextColor, icon, title, subtitle, rowsHtml, footNote, footBg, footColor){
+  return '' +
+   '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#eef1f5;padding:24px 0">' +
+    '<tr><td align="center">' +
+     '<table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;background-color:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e3e7ee;font-family:Tahoma,Arial,sans-serif">' +
+      '<tr><td bgcolor="' + headColor + '" style="background-color:' + headColor + ';padding:28px 26px;text-align:center">' +
+       '<div style="font-size:34px;line-height:1.2;margin-bottom:8px">' + icon + '</div>' +
+       '<div style="color:#ffffff;font-size:18.5px;font-weight:bold;line-height:1.5;font-family:Tahoma,Arial,sans-serif">' + title + '</div>' +
+       (subtitle ? '<div style="color:' + subTextColor + ';font-size:13px;margin-top:6px;font-family:Tahoma,Arial,sans-serif">' + subtitle + '</div>' : '') +
+      '</td></tr>' +
+      '<tr><td style="padding:24px 26px">' +
+       '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14.5px;color:#333333;font-family:Tahoma,Arial,sans-serif">' +
+        rowsHtml +
+       '</table>' +
+       '<div style="margin-top:20px;text-align:center;color:#666666;font-size:13px;line-height:1.6;font-family:Tahoma,Arial,sans-serif">' + footNote + '</div>' +
+      '</td></tr>' +
+      '<tr><td bgcolor="' + footBg + '" style="background-color:' + footBg + ';padding:12px;text-align:center;font-size:11.5px;color:' + footColor + ';font-family:Tahoma,Arial,sans-serif">ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย</td></tr>' +
+     '</table>' +
+    '</td></tr>' +
+   '</table>';
+}
+/** แถวข้อมูลแบบ label/value ในตารางอีเมล */
+function emailRow_(label, value, valueColor, valueSize){
+  var vStyle = 'padding:9px 0;font-weight:bold;color:' + (valueColor||'#222222') + ';font-size:' + (valueSize||'14.5px') + ';font-family:Tahoma,Arial,sans-serif';
+  return '<tr>' +
+   '<td style="padding:9px 0;color:#888888;width:105px;vertical-align:top;border-top:1px solid #f0f0f0;font-family:Tahoma,Arial,sans-serif">' + label + '</td>' +
+   '<td style="' + vStyle + ';border-top:1px solid #f0f0f0">' + value + '</td>' +
+  '</tr>';
+}
+
 function es_(v){
   v = (v==null?'':String(v));
   return v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
