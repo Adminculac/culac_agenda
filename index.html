@@ -355,6 +355,8 @@ tbody tr:last-child td{border-bottom:none}
    <button class="btn g" onclick="exportSummaryCSV()">⬇ Excel (CSV)</button>
    <button class="btn a" onclick="printYearReport()">พิมพ์รายงานสรุปปิดปีงบ</button>
    <button class="btn g" onclick="exportYearReportCSV()">⬇ Excel (CSV)</button>
+   <button class="btn a" onclick="printMeetingReport()">พิมพ์รายงานสรุปมติที่ประชุม</button>
+   <button class="btn g" onclick="exportMeetingReportCSV()">⬇ Excel (CSV)</button>
   </div>
  </div></div>
  <div class="card" style="padding-top:10px"><div id="sumTable"></div></div>
@@ -376,7 +378,7 @@ tbody tr:last-child td{border-bottom:none}
 </section>
 
 <section class="pg" id="pg-settings">
- <div class="hd"><div class="row"><div><h2>ตั้งค่าระบบ</h2><p>สำหรับเลขานุการ — ตั้งค่าปีงบประมาณที่ใช้งาน ผู้ใช้งานและสิทธิ์ KPI และการเปิด-ปิดรับข้อเสนอโครงการ</p></div></div></div>
+ <div class="hd"><div class="row"><div><h2>ตั้งค่าระบบ</h2><p>สำหรับเลขานุการ — ตั้งค่าปีงบประมาณที่ใช้งาน ผู้ใช้งานและสิทธิ์ ตัวชี้วัด (SDA) และการเปิด-ปิดรับข้อเสนอโครงการ</p></div></div></div>
  <div id="setBody"></div>
 </section>
 
@@ -2762,11 +2764,11 @@ const EMAILS={
 const LOGIN_PASSWORD='1234';
 const DEPTS=['ฝ่ายบริหารงานทั่วไป','ฝ่ายวิจัยและเลี้ยงสัตว์','ฝ่ายห้องปฏิบัติการ','ฝ่ายสัตวแพทย์และมาตรฐาน'];
 let KPIS={
- 'KPI-1':'จำนวนบุคลากรและนักวิจัยที่ผ่านการอบรมมาตรฐานจริยธรรมสัตว์ทดลอง',
- 'KPI-2':'ระดับการได้รับการรับรองมาตรฐานสากล (ISO / AAALAC)',
- 'KPI-3':'ความปลอดภัยด้านสิ่งแวดล้อมและระบบสาธารณูปโภค',
- 'KPI-4':'จำนวนการให้บริการตรวจวิเคราะห์และบริการวิชาการ',
- 'KPI-5':'ประสิทธิภาพการบริหารจัดการภายในองค์กร',
+ 'SDA-1':'จำนวนบุคลากรและนักวิจัยที่ผ่านการอบรมมาตรฐานจริยธรรมสัตว์ทดลอง',
+ 'SDA-2':'ระดับการได้รับการรับรองมาตรฐานสากล (ISO / AAALAC)',
+ 'SDA-3':'ความปลอดภัยด้านสิ่งแวดล้อมและระบบสาธารณูปโภค',
+ 'SDA-4':'จำนวนการให้บริการตรวจวิเคราะห์และบริการวิชาการ',
+ 'SDA-5':'ประสิทธิภาพการบริหารจัดการภายในองค์กร',
  'NA':'ยังไม่ได้ระบุ (รอที่ประชุมกำหนด)'
 };
 const ST={
@@ -3901,6 +3903,141 @@ function exportYearReportCSV(){
  downloadCSV('รายงานสรุปโครงการประจำปี_'+FY+'.csv',headers,rows);
  logLocal('ดาวน์โหลด Excel (CSV)','รายงานสรุปโครงการประจำปี','ปีงบประมาณ '+FY);
 }
+function printMeetingReport(){
+ const ps=fy().filter(p=>['running','closed'].includes(p.status)&&p.meetingRef);
+ if(!ps.length)return toast('ยังไม่มีโครงการที่อนุมัติในปีงบประมาณนี้');
+ const groups={};
+ ps.forEach(p=>{const k=p.meetingRef;if(!groups[k])groups[k]={date:p.approvedAt,items:[]};
+  groups[k].items.push(p);if(p.approvedAt&&(!groups[k].date||p.approvedAt<groups[k].date))groups[k].date=p.approvedAt;});
+ const sortedKeys=Object.keys(groups).sort((a,b)=>{
+  const ma=a.match(/(\d+)\s*\/\s*(\d+)/),mb=b.match(/(\d+)\s*\/\s*(\d+)/);
+  if(ma&&mb){if(+ma[2]!==+mb[2])return +ma[2]-+mb[2];return +ma[1]-+mb[1];}
+  return a.localeCompare(b);
+ });
+ let totalBudget=0;ps.forEach(p=>totalBudget+=sumBudget(p)||0);
+ const sections=sortedKeys.map(key=>{
+  const g=groups[key];let subBudget=0;
+  const rows=g.items.map((p,i)=>{const b=sumBudget(p)||0;subBudget+=b;
+   return `<tr>
+    <td class="c">${i+1}</td>
+    <td>${p.status==='closed'?'<span class="tag done">ปิดแล้ว</span> ':''}<b>${p.code}</b> · ${es(p.name)}<div style="font-size:10px;color:#000">หัวหน้าโครงการ: ${es(p.owner)}${(p.team&&[].concat(p.team).filter(Boolean).length)?' · ผู้ร่วม: '+es([].concat(p.team).filter(Boolean).join(', ')):''}</div></td>
+    <td style="font-size:11px">${p.kpi==='NA'?'<span style="color:#999">ยังไม่ระบุ</span>':`<b>${p.kpi}</b> ${es(KPIS[p.kpi]||'')}`}</td>
+    <td class="r">${mn(b)}</td>
+   </tr>`;
+  }).join('');
+  return `<tr class="kg"><td colspan="4">${es(key)} · วันที่ ${fd(g.date)} <span style="font-weight:400;color:#555">(${g.items.length} โครงการ)</span></td></tr>
+   ${rows}
+   <tr class="sub"><td colspan="3" class="r">รวมการประชุมนี้</td><td class="r">${mn(subBudget)}</td></tr>`;
+ }).join('');
+ const w=window.open('','_blank');
+ w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
+  <title>รายงานสรุปมติที่ประชุมอนุมัติโครงการ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+  @page{size:A4 portrait;margin:0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Sarabun',sans-serif;color:#1a1a1a;font-size:11px;line-height:1.35;background:#e2e2e2;padding:16px 0 60px}
+  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:14mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+  .hd{text-align:center;border-bottom:2px solid #c8671a;padding-bottom:8px;margin-bottom:10px}
+  .hd h1{font-size:16px;font-weight:700;color:#14233f}.hd h2{font-size:14px;font-weight:600;margin-top:2px;color:#a8531a}
+  .hd p{font-size:11px;color:#444;margin-top:2px}
+  .ov{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 16px}
+  .ov .b{border:1px solid #ddd;border-radius:9px;padding:10px 6px;text-align:center}
+  .ov .b .n{font-size:18px;font-weight:800;color:#14233f;white-space:nowrap}.ov .b .l{font-size:10px;color:#666;margin-top:2px}
+  table{width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed}
+  th,td{border:1px solid #444;padding:4px 6px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}
+  th{background:#14233f;color:#fff;text-align:center;font-weight:600;font-size:10px}
+  td.c{text-align:center}td.r{text-align:right;white-space:nowrap}
+  tr.kg td{background:#fbf1e8;font-weight:700;color:#a8531a;font-size:11.5px}
+  tr.sub td{background:#f6f6f6;font-weight:700}
+  .tag.done{display:inline-block;background:#eef0f2;color:#3a4657;border-radius:5px;padding:0 6px;font-size:9px;font-weight:700}
+  tfoot td{background:#eef0f2;font-weight:800;border-top:2px solid #14233f}
+  @media print{.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;margin:0;box-shadow:none}}
+  </style></head><body>
+  <style id="upage"></style>
+  <style id="uzoom" media="screen"></style>
+  <div class="noprint" style="position:sticky;top:0;left:0;right:0;background:#12203c;color:#fff;padding:8px 14px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;z-index:9;font-family:'Sarabun',sans-serif;font-size:13px">
+   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-weight:600">ตั้งค่าการพิมพ์</span>
+    <label style="display:flex;gap:4px;align-items:center">แนววาง
+     <select id="pOrient" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
+      <option value="portrait">แนวตั้ง</option><option value="landscape">แนวนอน</option></select></label>
+    <label style="display:flex;gap:4px;align-items:center">กระดาษ
+     <select id="pSize" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
+      <option value="A4">A4</option><option value="A3">A3</option><option value="Letter">Letter</option></select></label>
+    <label style="display:flex;gap:4px;align-items:center">ขอบ
+     <select id="pMargin" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
+      <option value="normal">ปกติ</option><option value="narrow">แคบ</option><option value="none">ไม่มีขอบ</option></select></label>
+    <label style="display:flex;gap:6px;align-items:center">พรีวิว
+     <input id="pZoom" type="range" min="50" max="180" value="100" oninput="applyZoom()" style="vertical-align:middle;width:110px">
+     <span id="pZoomV" style="font-size:12px;min-width:38px">100%</span></label>
+   </div>
+   <span style="display:flex;gap:8px">
+    <button onclick="window.print()" style="background:#c8671a;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">พิมพ์ / บันทึก PDF</button>
+    <button onclick="window.close()" style="background:#33415c;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:14px;cursor:pointer">ปิด</button>
+   </span>
+  </div>
+  <script>
+  (function(){
+   var sheet=document.querySelector('.sheet');
+   var wmm={A4:{portrait:210,landscape:297},A3:{portrait:297,landscape:420},Letter:{portrait:216,landscape:279}};
+   var oSel=document.getElementById('pOrient');
+   var startLandscape=false;
+   try{var mw=getComputedStyle(sheet).maxWidth;if(mw&&parseFloat(mw)>260)startLandscape=true;}catch(e){}
+   if(oSel)oSel.value=startLandscape?'landscape':'portrait';
+   window.applyPrint=function(){
+    var o=document.getElementById('pOrient').value;var s=document.getElementById('pSize').value;
+    var mSel=document.getElementById('pMargin').value;var mm=(mSel==='none')?'0mm':(mSel==='narrow')?'8mm':'15mm';
+    var w=(wmm[s]||wmm.A4)[o];
+    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:0}';
+    sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';sheet.style.padding=mm;applyZoom();
+   };
+   window.applyZoom=function(){
+    var z=parseInt(document.getElementById('pZoom').value,10)/100;
+    document.getElementById('uzoom').textContent='@media screen{.sheet{zoom:'+z+'}}';
+    document.getElementById('pZoomV').textContent=Math.round(z*100)+'%';
+   };
+   function autofit(){try{var uz=document.getElementById('uzoom');if(uz)uz.textContent='';
+    var w=sheet.getBoundingClientRect().width;if(!w)return;var avail=window.innerWidth-48;
+    var z=Math.min(1.6,Math.max(0.5,avail/w));var zr=document.getElementById('pZoom');zr.value=Math.round(z*100);applyZoom();}catch(e){}}
+   setTimeout(autofit,80);
+   window.addEventListener('resize',function(){clearTimeout(window._rf);window._rf=setTimeout(autofit,150);});
+  })();
+  <\/script>
+  <div class="sheet">
+   <div class="hd">
+    <h1>ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย</h1>
+    <h2>รายงานสรุปมติที่ประชุมอนุมัติโครงการ</h2>
+    <p>ปีงบประมาณ ${FY} · เฉพาะโครงการที่ผ่านการอนุมัติแล้ว จัดกลุ่มตามครั้งที่ประชุม</p>
+   </div>
+   <div class="ov">
+    <div class="b"><div class="n">${sortedKeys.length}</div><div class="l">ครั้งที่ประชุม</div></div>
+    <div class="b"><div class="n">${ps.length}</div><div class="l">โครงการที่อนุมัติรวม</div></div>
+    <div class="b"><div class="n">${mn(totalBudget)}</div><div class="l">งบอนุมัติรวม (บาท)</div></div>
+   </div>
+   <table>
+    <thead><tr>
+     <th style="width:4%">#</th><th style="width:52%">รหัส / ชื่อโครงการ / ผู้รับผิดชอบ</th>
+     <th style="width:28%">ตัวชี้วัด (SDA)</th><th style="width:16%">งบที่อนุมัติ</th>
+    </tr></thead>
+    <tbody>${sections}</tbody>
+    <tfoot><tr><td colspan="3" class="r">รวมทั้งสิ้น ${ps.length} โครงการ</td><td class="r">${mn(totalBudget)}</td></tr></tfoot>
+   </table>
+  </div>
+  </body></html>`);
+ w.document.close();
+ logLocal('พิมพ์รายงานสรุปมติที่ประชุม','ปีงบประมาณ '+FY,ps.length+' โครงการ');
+}
+function exportMeetingReportCSV(){
+ const ps=fy().filter(p=>['running','closed'].includes(p.status)&&p.meetingRef);
+ if(!ps.length)return toast('ยังไม่มีโครงการที่อนุมัติในปีงบประมาณนี้');
+ const headers=['ครั้งที่ประชุม','วันที่ประชุม','รหัส','ชื่อโครงการ','ผู้รับผิดชอบ','สถานะ','รหัสตัวชี้วัด (SDA)','รายละเอียดตัวชี้วัด (SDA)','งบที่อนุมัติ (บาท)'];
+ const rows=ps.map(p=>[p.meetingRef,fd(p.approvedAt),p.code,p.name,p.owner,(ST[p.status]||{}).t||p.status,
+  p.kpi==='NA'?'':p.kpi,p.kpi==='NA'?'ยังไม่ระบุ':(KPIS[p.kpi]||''),(sumBudget(p)||0).toFixed(2)]);
+ downloadCSV('รายงานสรุปมติที่ประชุม_'+FY+'.csv',headers,rows);
+ logLocal('ดาวน์โหลด Excel (CSV)','รายงานสรุปมติที่ประชุม','ปีงบประมาณ '+FY);
+}
+
 function printPendingSummary(){
  const ps=fy().filter(p=>p.status==='submitted');
  if(!ps.length)return toast('ไม่มีโครงการรอเสนออนุมัติในขณะนี้');
@@ -4221,7 +4358,7 @@ function paintMeet(){
 function paintDocs(){
  $('docCards').innerHTML=`<div class="card" style="margin:0;display:flex;flex-direction:column;max-width:520px">
    <h3>รายงานความคืบหน้าโครงการ</h3>
-   <div class="sb" style="flex:1">ชุดสไลด์นำเสนอความคืบหน้าโครงการสำหรับการประชุมศูนย์ฯ (รายโครงการ พร้อม KPI · % ที่ระบบคำนวณ · รายการการจัดและงบที่ใช้แต่ละครั้ง)</div>
+   <div class="sb" style="flex:1">ชุดสไลด์นำเสนอความคืบหน้าโครงการสำหรับการประชุมศูนย์ฯ (รายโครงการ พร้อมตัวชี้วัด (SDA) · % ที่ระบบคำนวณ · รายการการจัดและงบที่ใช้แต่ละครั้ง)</div>
    <div style="font-size:13px;color:var(--accent2);background:var(--accent-bg);border-radius:8px;padding:7px 12px;margin-bottom:14px">สรุปความคืบหน้าประจำปีงบประมาณ ${FY}</div>
    <button class="btn a" onclick="openShow('progress')">เปิดชุดนำเสนอความคืบหน้า</button></div>`;
 }
@@ -4254,11 +4391,11 @@ function paintSettings(){
   <div class="card"><h3>การรับข้อเสนอโครงการ (ปีงบประมาณ ${FY})</h3>
    <div class="note ${open?'':'i'}" style="margin-bottom:12px">สถานะปัจจุบัน: <b>${open?'กำลังเปิดรับข้อเสนอ':'ปิดรับข้อเสนอ'}</b></div>
    <button class="btn ${open?'g':'a'}" onclick="toggleIntake();paintSettings()">${open?'ปิดรับข้อเสนอ':'เปิดรับข้อเสนอ'}</button></div>
-  <div class="card"><h3>ผู้ใช้งานและสิทธิ์ / KPI</h3>
+  <div class="card"><h3>ผู้ใช้งานและสิทธิ์ / ตัวชี้วัด (SDA)</h3>
    <div class="sb">จัดการรายชื่อผู้ใช้งาน กำหนดสิทธิ์ (หัวหน้าโครงการ · เลขานุการ · ผู้บริหาร) และรายการตัวชี้วัด (SDA)</div>
    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
     <button class="btn a" onclick="openPersons()">ทะเบียนบุคลากรและการกำหนดสิทธิ์</button>
-    <button class="btn g" onclick="openKpis()">จัดการรายการ KPI</button></div></div>
+    <button class="btn g" onclick="openKpis()">จัดการรายการตัวชี้วัด (SDA)</button></div></div>
   <div class="card"><h3>การรายงานความคืบหน้า</h3>
    <div class="note i" style="margin:0">ระบบรายงานความคืบหน้าไม่มีรอบบังคับแล้ว — ผู้รับผิดชอบหลักบันทึก “การจัด/รายงานผล” ได้ทุกครั้งที่จัดจริง ระบบจะรวมจำนวนครั้งและงบใช้จริงสะสมให้อัตโนมัติ</div></div>
   <div class="card"><h3>สำรอง / กู้คืนข้อมูล (JSON)</h3>
@@ -4525,7 +4662,7 @@ function addTeamMember(){
  sel.value='';renderTeamChips();
 }
 function rmTeamMember(i){TEAM_SEL.splice(i,1);renderTeamChips();}
-function toggleKpiHelp(btn){const h=$('kpiHelp');if(!h)return;const on=h.style.display==='none';h.style.display=on?'block':'none';if(btn)btn.textContent=on?'ซ่อนรายละเอียด KPI ▴':'ดูรายละเอียด KPI ทั้งหมด ▾';}
+function toggleKpiHelp(btn){const h=$('kpiHelp');if(!h)return;const on=h.style.display==='none';h.style.display=on?'block':'none';if(btn)btn.textContent=on?'ซ่อนรายละเอียด SDA ▴':'ดูรายละเอียด SDA ทั้งหมด ▾';}
 function saveP(id,submit){
  const g=i=>$(i).value.trim();
  const existing=id?gid(id):null;
@@ -4732,11 +4869,11 @@ function openKpis(){
  }).join('');
  $('mdB').innerHTML=`<div class="sb" style="margin-bottom:12px">ตัวชี้วัดที่ใช้เลือกให้โครงการ และแสดงในตารางสรุป/สไลด์นำเสนอ</div>
   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-   <input id="nkk" placeholder="รหัส เช่น KPI-6" style="width:130px;border:1px solid var(--line2);border-radius:9px;padding:9px 12px">
+   <input id="nkk" placeholder="รหัส เช่น ksu0040" style="width:130px;border:1px solid var(--line2);border-radius:9px;padding:9px 12px">
    <input id="nkv" placeholder="ชื่อตัวชี้วัด" style="flex:1;min-width:180px;border:1px solid var(--line2);border-radius:9px;padding:9px 12px">
    <button class="btn a" onclick="addKpi()">เพิ่ม</button></div>
-  <div style="margin-bottom:16px"><label class="btn g s" style="cursor:pointer;display:inline-block">⬆ อัปโหลด KPI (CSV/Excel · A = รหัส, B = ตัวชี้วัด)<input type="file" accept=".csv,.xlsx,.xls" onchange="importKpis(this)" style="display:none"></label></div>
-  ${rows||'<div class="empty">ยังไม่มี KPI</div>'}`;
+  <div style="margin-bottom:16px"><label class="btn g s" style="cursor:pointer;display:inline-block">⬆ อัปโหลดตัวชี้วัด (SDA) (CSV/Excel · A = รหัส, B = ตัวชี้วัด)<input type="file" accept=".csv,.xlsx,.xls" onchange="importKpis(this)" style="display:none"></label></div>
+  ${rows||'<div class="empty">ยังไม่มีตัวชี้วัด (SDA)</div>'}`;
  $('mdF').innerHTML=`<button class="btn g" onclick="closeMD()">ปิด</button>`;
  $('md').classList.add('on');
 }
@@ -4744,7 +4881,7 @@ function addKpi(){
  if(!DB.kpis)DB.kpis={...KPIS};
  let k=($('nkk').value||'').trim(),v=($('nkv').value||'').trim();
  if(!v)return toast('กรอกชื่อตัวชี้วัด');
- if(!k)k='KPI-'+(Object.keys(DB.kpis).filter(x=>x!=='NA').length+1);
+ if(!k)k='SDA-'+(Object.keys(DB.kpis).filter(x=>x!=='NA').length+1);
  DB.kpis[k]=v;KPIS=DB.kpis;save();log('เพิ่ม KPI',k,v);openKpis();paint();toast('เพิ่ม KPI แล้ว');
 }
 function delKpi(k){
@@ -4763,13 +4900,13 @@ function importKpis(input){
    if(!code&&!desc)return;
    if(i===0&&/รหัส|kpi|ตัวชี้วัด|code|description|ลำดับ/i.test(code+desc)&&!/^KPI-?\d/i.test(code))return;
    if(!desc){desc=code;code=''}
-   if(!code)code='KPI-'+(++auto);
+   if(!code)code='SDA-'+(++auto);
    kp[code]=desc;
   });
-  if(!Object.keys(kp).length)return toast('ไม่พบข้อมูล KPI ในไฟล์');
+  if(!Object.keys(kp).length)return toast('ไม่พบข้อมูลตัวชี้วัด (SDA) ในไฟล์');
   kp['NA']='ยังไม่ระบุ';
   DB.kpis=kp;KPIS=kp;save();log('นำเข้า KPI',(Object.keys(kp).length-1)+' รายการ','');openKpis();paint();
-  toast('นำเข้า KPI '+(Object.keys(kp).length-1)+' รายการ'+(isConnected()?'':' · บันทึกในเครื่องนี้ (ยังไม่เชื่อมต่อฐานข้อมูลกลาง)'));
+  toast('นำเข้าตัวชี้วัด (SDA) '+(Object.keys(kp).length-1)+' รายการ'+(isConnected()?'':' · บันทึกในเครื่องนี้ (ยังไม่เชื่อมต่อฐานข้อมูลกลาง)'));
  });
  input.value='';
 }
@@ -4824,7 +4961,7 @@ function saveRes(id){
   const r=$('rn').value.trim();if(!r)return toast('ระบุเหตุผลที่ไม่อนุมัติ');
   p.status='rejected';p.approvedAt=approvedAt;p.rejectReason=r;hist(p,(already?'แก้ไขมติที่ประชุม':'มติที่ประชุม')+': ไม่อนุมัติ ('+ref+')',r);log('บันทึกมติ',p.code,'ไม่อนุมัติ');
  }else{
-  const b=+$('rb').value;if(!(b>0))return toast('ระบุงบประมาณที่อนุมัติ');
+  const b=+$('rb').value;if(!(b>=0)||$('rb').value.trim()==='')return toast('ระบุงบประมาณที่อนุมัติ (ใส่ 0 ได้ถ้าไม่มีค่าใช้จ่าย)');
   const c=$('rc').value.trim();
   p.budgetApproved=b;p.kpi=$('rk').value;p.status='running';p.approvedAt=approvedAt;p.condition=c;
   hist(p,(already?'แก้ไขมติที่ประชุม':'มติที่ประชุม')+': อนุมัติ ('+ref+')',
@@ -4967,8 +5104,8 @@ function openShow(kind){
 
   const kg={};list.forEach(p=>{const k=p.kpi||'NA';kg[k]=kg[k]||{n:0,b:0,s:0};kg[k].n++;kg[k].b+=p.budgetApproved||0;kg[k].s+=spent(p)});
   sheets.push(`<div class="sheet">${head('ผลตามตัวชี้วัด (SDA)','ภาพรวมทั้งปี')}
-   <h4>ผลการดำเนินงานจำแนกตาม KPI</h4>
-   <div style="margin-top:18px;overflow:hidden"><table style="font-size:13.5px"><thead><tr><th>KPI</th><th>ตัวชี้วัด</th><th class="num">โครงการ</th><th class="num">งบที่อนุมัติ</th><th class="num">ใช้จริง</th></tr></thead><tbody>
+   <h4>ผลการดำเนินงานจำแนกตามตัวชี้วัด (SDA)</h4>
+   <div style="margin-top:18px;overflow:hidden"><table style="font-size:13.5px"><thead><tr><th>รหัส (SDA)</th><th>ตัวชี้วัด</th><th class="num">โครงการ</th><th class="num">งบที่อนุมัติ</th><th class="num">ใช้จริง</th></tr></thead><tbody>
    ${Object.entries(kg).map(([k,v])=>`<tr><td><span class="kpi">${k==='NA'?'ไม่ระบุ':k}</span></td><td>${es(KPIS[k])}</td><td class="num">${v.n}</td><td class="num">${mn(v.b)}</td><td class="num">${mn(v.s)}</td></tr>`).join('')}
    </tbody></table></div></div>`);
 
