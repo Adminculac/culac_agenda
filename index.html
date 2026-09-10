@@ -336,7 +336,7 @@ tbody tr:last-child td{border-bottom:none}
  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
   <input id="q" placeholder="ค้นหาชื่อโครงการหรือรหัส" oninput="paintReg()" style="flex:1;min-width:220px;border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff">
   <select id="qs" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="">ทุกสถานะ</option></select>
-  <select id="qk" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="">ทุก KPI</option></select>
+  <select id="qk" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="">ทุกตัวชี้วัด (SDA)</option></select>
  </div>
  <div class="card" id="regTableCard" style="padding-top:10px"><div id="regTable"></div></div>
  <div id="regList"></div>
@@ -3293,7 +3293,7 @@ function paintDash(){
 function paintReg(){
  const qs=$('qs'),qk=$('qk');
  if(qs.options.length<2)qs.innerHTML='<option value="">ทุกสถานะ</option>'+Object.entries(ST).filter(([k])=>k!=='draft').map(([k,v])=>`<option value="${k}">${v.t}</option>`).join('');
- if(qk.options.length<2)qk.innerHTML='<option value="">ทุก KPI</option>'+Object.keys(KPIS).map(k=>`<option value="${k}">${k==='NA'?'ยังไม่ระบุ':k}</option>`).join('');
+ if(qk.options.length<2)qk.innerHTML='<option value="">ทุกตัวชี้วัด (SDA)</option>'+Object.keys(KPIS).map(k=>`<option value="${k}">${k==='NA'?'ยังไม่ระบุ':k}</option>`).join('');
  const ps=regSet();
  const tc=$('regTableCard');if(tc)tc.style.display=ps.length?'block':'none';
  $('regTable').innerHTML=ps.length?regTableHTML(ps,'รายงานความคืบหน้าโครงการ (รวม '+ps.length+' โครงการ)'):'';
@@ -4597,7 +4597,7 @@ function openP(i){
  $('dwB').innerHTML=h;$('dw').classList.add('on');$('mask').classList.add('on');
 }
 function closeDW(){$('dw').classList.remove('on');$('mask').classList.remove('on')}
-function setKpi(i,k){const p=gid(i);const o=p.kpi;p.kpi=k;hist(p,'ปรับตัวชี้วัด (SDA)',`${o==='NA'?'ยังไม่ระบุ':o} → ${k==='NA'?'ยังไม่ระบุ':k}`);log('ปรับ KPI',p.code,k);save();paint();toast('บันทึก KPI แล้ว')}
+function setKpi(i,k){const p=gid(i);const o=p.kpi;p.kpi=k;hist(p,'ปรับตัวชี้วัด (SDA)',`${o==='NA'?'ยังไม่ระบุ':o} → ${k==='NA'?'ยังไม่ระบุ':k}`);log('ปรับตัวชี้วัด (SDA)',p.code,k);save();paint();toast('บันทึกตัวชี้วัด (SDA) แล้ว')}
 function hist(p,h,m){p.history=p.history||[];p.history.push({ts:new Date().toISOString(),by:USER,h,m})}
 
 function openNew(id){
@@ -4882,12 +4882,12 @@ function addKpi(){
  let k=($('nkk').value||'').trim(),v=($('nkv').value||'').trim();
  if(!v)return toast('กรอกชื่อตัวชี้วัด');
  if(!k)k='SDA-'+(Object.keys(DB.kpis).filter(x=>x!=='NA').length+1);
- DB.kpis[k]=v;KPIS=DB.kpis;save();log('เพิ่ม KPI',k,v);openKpis();paint();toast('เพิ่ม KPI แล้ว');
+ DB.kpis[k]=v;KPIS=DB.kpis;save();log('เพิ่มตัวชี้วัด (SDA)',k,v);openKpis();paint();toast('เพิ่มตัวชี้วัด (SDA) แล้ว');
 }
 function delKpi(k){
- if(DB.projects.some(p=>p.kpi===k))return toast('ลบไม่ได้ มีโครงการใช้ KPI นี้');
+ if(DB.projects.some(p=>p.kpi===k))return toast('ลบไม่ได้ มีโครงการใช้ตัวชี้วัด (SDA) นี้');
  if(!confirm('ลบ '+k+' ?'))return;
- delete DB.kpis[k];KPIS=DB.kpis;save();log('ลบ KPI',k,'');openKpis();paint();toast('ลบแล้ว');
+ delete DB.kpis[k];KPIS=DB.kpis;save();log('ลบตัวชี้วัด (SDA)',k,'');openKpis();paint();toast('ลบแล้ว');
 }
 function importKpis(input){
  const f=input.files[0];if(!f)return;
@@ -4898,14 +4898,14 @@ function importKpis(input){
    if(cells[0]&&/^\d+$/.test(cells[0])&&cells.length>2)cells=cells.slice(1); // ตัดคอลัมน์ลำดับออก
    let code=cells[0]||'',desc=cells[1]||'';
    if(!code&&!desc)return;
-   if(i===0&&/รหัส|kpi|ตัวชี้วัด|code|description|ลำดับ/i.test(code+desc)&&!/^KPI-?\d/i.test(code))return;
+   if(i===0&&/รหัส|kpi|sda|ตัวชี้วัด|code|description|ลำดับ/i.test(code+desc)&&!/^(KPI|SDA)-?\d/i.test(code))return;
    if(!desc){desc=code;code=''}
    if(!code)code='SDA-'+(++auto);
    kp[code]=desc;
   });
   if(!Object.keys(kp).length)return toast('ไม่พบข้อมูลตัวชี้วัด (SDA) ในไฟล์');
   kp['NA']='ยังไม่ระบุ';
-  DB.kpis=kp;KPIS=kp;save();log('นำเข้า KPI',(Object.keys(kp).length-1)+' รายการ','');openKpis();paint();
+  DB.kpis=kp;KPIS=kp;save();log('นำเข้าตัวชี้วัด (SDA)',(Object.keys(kp).length-1)+' รายการ','');openKpis();paint();
   toast('นำเข้าตัวชี้วัด (SDA) '+(Object.keys(kp).length-1)+' รายการ'+(isConnected()?'':' · บันทึกในเครื่องนี้ (ยังไม่เชื่อมต่อฐานข้อมูลกลาง)'));
  });
  input.value='';
@@ -5066,7 +5066,7 @@ function openShow(kind){
    const rs=reps(p),last=lastRep(p),l=lamp(p),b=p.budgetApproved||0,s=spent(p),pc=progress(p);
    sheets.push(`<div class="sheet">${head(p.code,'')}
     <h4>${es(p.name)}</h4>
-    <div class="mta"><b>KPI:</b> ${p.kpi==='NA'?'-':`<span class="kpi">${es(p.kpi)}</span> ${es(KPIS[p.kpi]||'')}`}</div>
+    <div class="mta"><b>SDA:</b> ${p.kpi==='NA'?'-':`<span class="kpi">${es(p.kpi)}</span> ${es(KPIS[p.kpi]||'')}`}</div>
     <div class="mta"><b>ผู้รับผิดชอบโครงการ (ประธาน):</b> ${es(p.owner)}</div>
     <div class="mta"><b>ผู้ร่วมโครงการ:</b> ${(p.team&&[].concat(p.team).filter(Boolean).length)?es([].concat(p.team).filter(Boolean).join(', ')):'-'}</div>
     <div class="sh-b">
