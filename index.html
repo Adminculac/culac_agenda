@@ -335,7 +335,7 @@ tbody tr:last-child td{border-bottom:none}
  </div></div>
  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
   <input id="q" placeholder="ค้นหาชื่อโครงการหรือรหัส" oninput="paintReg()" style="flex:1;min-width:220px;border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff">
-  <select id="qs" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="">ทุกสถานะ</option></select>
+  <select id="qs" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="active" selected>กำลังดำเนินการ (อนุมัติแล้ว/ปิดแล้ว)</option><option value="">ทุกสถานะ</option></select>
   <select id="qk" onchange="paintReg()" style="border:1px solid var(--line2);border-radius:9px;padding:9px 13px;background:#fff"><option value="">ทุกตัวชี้วัด (SDA)</option></select>
  </div>
  <div class="card" id="regTableCard" style="padding-top:10px"><div id="regTable"></div></div>
@@ -3292,17 +3292,20 @@ function paintDash(){
 
 function paintReg(){
  const qs=$('qs'),qk=$('qk');
- if(qs.options.length<2)qs.innerHTML='<option value="">ทุกสถานะ</option>'+Object.entries(ST).filter(([k])=>k!=='draft').map(([k,v])=>`<option value="${k}">${v.t}</option>`).join('');
+ if(qs.options.length<2)qs.innerHTML='<option value="active">กำลังดำเนินการ (อนุมัติแล้ว/ปิดแล้ว)</option><option value="">ทุกสถานะ</option>'+Object.entries(ST).filter(([k])=>k!=='draft').map(([k,v])=>`<option value="${k}">${v.t}</option>`).join('');
  if(qk.options.length<2)qk.innerHTML='<option value="">ทุกตัวชี้วัด (SDA)</option>'+Object.keys(KPIS).map(k=>`<option value="${k}">${k==='NA'?'ยังไม่ระบุ':k}</option>`).join('');
  const ps=regSet();
  const tc=$('regTableCard');if(tc)tc.style.display=ps.length?'block':'none';
- $('regTable').innerHTML=ps.length?regTableHTML(ps,'รายงานความคืบหน้าโครงการ (รวม '+ps.length+' โครงการ)'):'';
+ const qsv=$('qs')&&$('qs').value;
+ const scopeNote=qsv==='active'?' — เฉพาะที่อนุมัติแล้ว/ปิดแล้ว':(qsv?' — เฉพาะ'+((ST[qsv]||{}).t||qsv):'');
+ $('regTable').innerHTML=ps.length?regTableHTML(ps,'รายงานความคืบหน้าโครงการ (รวม '+ps.length+' โครงการ'+scopeNote+')'):'';
  $('regList').innerHTML=ps.length?'':'<div class="card"><div class="empty"><b>ไม่พบโครงการตามเงื่อนไข</b>ลองปรับตัวกรองใหม่</div></div>';
 }
 function regSet(){
  const qs=$('qs'),qk=$('qk');
  const q=($('q')&&$('q').value||'').toLowerCase().trim();
- return fyPub().filter(p=>(!q||p.name.toLowerCase().includes(q)||p.code.toLowerCase().includes(q))&&(!(qs&&qs.value)||p.status===qs.value)&&(!(qk&&qk.value)||(p.kpi||'NA')===qk.value));
+ const sv=qs&&qs.value;
+ return fyPub().filter(p=>(!q||p.name.toLowerCase().includes(q)||p.code.toLowerCase().includes(q))&&(!sv||(sv==='active'?['running','closed'].includes(p.status):p.status===sv))&&(!(qk&&qk.value)||(p.kpi||'NA')===qk.value));
 }
 function regMetrics(p){
  const planned=+p.times||1, done=timesDone(p);
@@ -5053,7 +5056,7 @@ function openShow(kind){
  }
 
  if(kind==='progress'){
-  const list=ps.filter(p=>['running','closed'].includes(p.status));
+  const list=ps.filter(p=>p.status==='running');
   title='รายงานความคืบหน้าโครงการ ประจำปีงบประมาณ '+FY;
   const bA=list.reduce((a,p)=>a+(p.budgetApproved||0),0),bS=list.reduce((a,p)=>a+spent(p),0);
   sheets.push(`<div class="sheet cover">${head('ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย','')}
@@ -5088,6 +5091,16 @@ function openShow(kind){
        </div>
        <div class="bar nv" style="margin-top:10px"><i style="width:${b?Math.min(100,s/b*100):0}%"></i></div></div>
      </div></div></div>`)});
+  sheets.push(`<div class="sheet cover" style="align-items:center;justify-content:center;text-align:center">
+   <h4 style="font-size:68px">นัดประชุมทุก 2 เดือน</h4>
+   <div style="display:flex;gap:16px;margin-top:26px;flex-wrap:wrap;justify-content:center">
+    ${['ต.ค.','ธ.ค.','ก.พ.','เม.ย.','มิ.ย.','ส.ค.'].map(m=>`<span style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:34px;padding:14px 32px;color:#ffd47e;font-weight:700;font-size:33px">${m}</span>`).join('')}
+   </div>
+   <div style="font-size:36px;margin-top:30px;line-height:1.55;max-width:1150px">
+    กรุณาบันทึกความคืบหน้าโครงการในระบบ<br>ก่อนเข้าประชุมครั้งถัดไป
+   </div>
+   <div style="font-size:30px;margin-top:22px;color:#ffd47e;font-weight:600">ขอบคุณครับ</div>
+  </div>`);
  }
 
  if(kind==='final'){
