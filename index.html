@@ -2797,6 +2797,8 @@ const MENU=[
 
 const API_BAKED   = '';   // ใส่ URL Web App ที่ Deploy (ผูกถาวรกับไฟล์นี้ — ใช้ตอนสร้างไฟล์แจกจ่าย)
 const LS_API='culac_gas_api', LS_SITE='culac_site_url', LS_QRTITLE='culac_qr_title', LS_REV='culac_rev', LS_SYNCED='culac_synced', LS_PROTO='culac_proto';
+/* รหัสลับสำหรับยืนยันตัวตนกับ Backend — ต้องตรงกับค่า API_TOKEN ใน Code.gs เสมอ */
+const API_TOKEN='culac-fe00xi0ylbmfhhenhgmv';
 const QUERY_GAS=(()=>{try{return (new URLSearchParams(location.search).get('gas')||'').trim()}catch(e){return ''}})();
 if(QUERY_GAS)localStorage.setItem(LS_API,QUERY_GAS);
 let API=QUERY_GAS||localStorage.getItem(LS_API)||API_BAKED;
@@ -2878,7 +2880,7 @@ async function pushState(){
  SYNC.busy=true;SYNC.pending=false;SYNC.state='saving';renderSync();
  try{
   const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-   body:JSON.stringify({changes:diff.send,since:SYNC.rev||0})});
+   body:JSON.stringify({token:API_TOKEN,changes:diff.send,since:SYNC.rev||0})});
   const j=await res.json();
   if(!j||!j.ok)throw new Error((j&&j.error)||'save failed');
   applyIncoming({projects:j.projects,kv:j.kv});
@@ -2891,7 +2893,7 @@ async function pushState(){
  if(SYNC.pending)queuePush();
 }
 async function pullChanges(since){
- const res=await fetch(API+(API.includes('?')?'&':'?')+'action=pull&since='+(since||0)+'&t='+Date.now());
+ const res=await fetch(API+(API.includes('?')?'&':'?')+'action=pull&token='+encodeURIComponent(API_TOKEN)+'&since='+(since||0)+'&t='+Date.now());
  const j=await res.json();
  if(!j||!j.ok)throw new Error((j&&j.error)||'pull failed');
  return j;
@@ -2979,7 +2981,7 @@ function startAutoRefresh(){
 }
 async function checkRev(){
  try{
-  const res=await fetch(API+(API.includes('?')?'&':'?')+'action=rev&t='+Date.now());
+  const res=await fetch(API+(API.includes('?')?'&':'?')+'action=rev&token='+encodeURIComponent(API_TOKEN)+'&t='+Date.now());
   const j=await res.json();
   return (j&&j.ok&&j.rev!=null)?j.rev:null;
  }catch(e){return null}
@@ -5060,46 +5062,55 @@ function openShow(kind){
   title='รายงานความคืบหน้าโครงการ ประจำปีงบประมาณ '+FY;
   const bA=list.reduce((a,p)=>a+(p.budgetApproved||0),0),bS=list.reduce((a,p)=>a+spent(p),0);
   sheets.push(`<div class="sheet cover">${head('ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย','')}
-   <h4>รายงานความคืบหน้าโครงการ<br>ประจำปีงบประมาณ ${FY}</h4>
-   <div style="display:flex;gap:40px;margin-top:26px">
-    ${[['โครงการที่ติดตาม',list.length],['งบที่อนุมัติ',mn(bA)],['ใช้จ่ายสะสม',mn(bS)],['คงเหลือ',mn(bA-bS)],
-       ['ความก้าวหน้าเฉลี่ย',(list.length?Math.round(list.reduce((a,p)=>a+progress(p),0)/list.length):0)+'%']]
-    .map(([k,v])=>`<div><div style="font-size:13px;color:var(--ink2)">${k}</div><div class="sh-n">${v}</div></div>`).join('')}</div></div>`);
+   <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+    <h4 style="font-size:50px;line-height:1.3;max-width:1000px">รายงานความคืบหน้าโครงการ<br>ประจำปีงบประมาณ ${FY}</h4>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:36px;max-width:1000px">
+     ${[['โครงการที่ติดตาม',list.length,''],['ความก้าวหน้าเฉลี่ย',(list.length?Math.round(list.reduce((a,p)=>a+progress(p),0)/list.length):0),'%']]
+     .map(([k,v,u])=>`<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px 18px"><div style="font-size:14px;color:#c3d0e6">${k}</div><div style="font-size:32px;font-weight:800;color:#ffd47e;line-height:1.25;font-variant-numeric:tabular-nums">${v}<span style="font-size:15px;font-weight:400;color:#c3d0e6">${u}</span></div></div>`).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:16px;max-width:1000px">
+     ${[['งบที่อนุมัติ',mn(bA),'บาท'],['ใช้จ่ายสะสม',mn(bS),'บาท'],['คงเหลือ',mn(bA-bS),'บาท']]
+     .map(([k,v,u])=>`<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:16px 18px"><div style="font-size:14px;color:#c3d0e6">${k}</div><div style="font-size:32px;font-weight:800;color:#ffd47e;line-height:1.25;font-variant-numeric:tabular-nums">${v}<span style="font-size:15px;font-weight:400;color:#c3d0e6">${u}</span></div></div>`).join('')}
+    </div>
+   </div></div>`);
   list.forEach(p=>{
    const rs=reps(p),last=lastRep(p),l=lamp(p),b=p.budgetApproved||0,s=spent(p),pc=progress(p);
+   const lbg={g:'var(--ok-bg)',y:'var(--warn-bg)',r:'var(--bad-bg)',n:'#f0efec'}[l.c];
+   const lfg={g:'var(--ok)',y:'var(--warn)',r:'var(--bad)',n:'#7a7568'}[l.c];
    sheets.push(`<div class="sheet">${head(p.code,'')}
-    <h4>${es(p.name)}</h4>
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+     <h4 style="font-size:34px">${es(p.name)}</h4>
+     <span style="background:${lbg};color:${lfg};font-size:16px;font-weight:800;padding:6px 18px;border-radius:20px;white-space:nowrap">${l.t}</span>
+    </div>
     <div class="mta"><b>SDA:</b> ${p.kpi==='NA'?'-':`<span class="kpi">${es(p.kpi)}</span> ${es(KPIS[p.kpi]||'')}`}</div>
     <div class="mta"><b>ผู้รับผิดชอบโครงการ (ประธาน):</b> ${es(p.owner)}</div>
     <div class="mta"><b>ผู้ร่วมโครงการ:</b> ${(p.team&&[].concat(p.team).filter(Boolean).length)?es([].concat(p.team).filter(Boolean).join(', ')):'-'}</div>
-    <div class="sh-b">
+    ${last&&last.issue?`<div style="background:var(--bad-bg);border:1px solid var(--bad);border-radius:9px;padding:10px 16px;margin-top:10px;display:flex;gap:10px;align-items:flex-start"><span style="font-size:19px;line-height:1.3">⚠️</span><div><div style="font-size:13px;font-weight:800;color:var(--bad)">ปัญหาอุปสรรค — ต้องการการพิจารณา</div><div style="font-size:14.5px;color:var(--bad);margin-top:2px">${nl(last.issue)}</div></div></div>`:''}
+    <div class="sh-b" style="margin-top:${last&&last.issue?'12px':'18px'}">
      <div style="overflow:hidden">
-      <h5>ผลการดำเนินงานล่าสุด <span style="font-weight:400;color:var(--ink3)">(ผู้ร่วม · วันที่ · งบที่ใช้)</span></h5>
-      <div style="margin-top:4px">${rs.length?rs.map((x,j)=>`<div style="display:flex;gap:9px;font-size:14.5px;padding:5px 0;align-items:baseline;border-bottom:1px solid var(--line)"><span style="color:var(--ink3);min-width:18px">${j+1}.</span><span style="flex:1">${es(repLabel(x))}</span><span style="color:var(--ink2);white-space:nowrap;min-width:60px;text-align:right">${x.participants!==''&&x.participants!=null?x.participants+' คน':'-'}</span><span style="color:var(--ink2);white-space:nowrap">${x.date?fd(x.date):''}</span><span style="color:var(--ink2);min-width:92px;text-align:right;white-space:nowrap">${mn(x.spent)} ฿</span></div>`).join(''):'<span style="color:var(--ink3);font-size:14px">— ยังไม่มีการจัด —</span>'}</div>
-      <h5 style="margin-top:16px">ปัญหาอุปสรรค</h5><p>${last&&last.issue?nl(last.issue):'<span style="color:var(--ink3)">ไม่มี</span>'}</p>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:6px"><span style="font-size:15px;color:var(--ink2)">ความคืบหน้า <b style="font-size:17px;color:var(--navy)">${pc}%</b> · จัดแล้ว <b>${timesDone(p)}${p.times?' / '+p.times:''}</b> ครั้ง</span></div>
+      <div class="bar" style="height:14px"><i style="width:${pc}%"></i></div>
+      <h5 style="margin-top:20px">ผลการดำเนินงานล่าสุด <span style="font-weight:400;color:var(--ink3)">(ผู้ร่วม · วันที่ · งบที่ใช้)</span></h5>
+      <div style="margin-top:4px">${rs.length?rs.map((x,j)=>`<div style="display:flex;gap:9px;font-size:14px;padding:5px 0;align-items:baseline;border-bottom:1px solid var(--line)"><span style="color:var(--ink3);min-width:18px">${j+1}.</span><span style="flex:1">${es(repLabel(x))}</span><span style="color:var(--ink2);white-space:nowrap;min-width:60px;text-align:right">${x.participants!==''&&x.participants!=null?x.participants+' คน':'-'}</span><span style="color:var(--ink2);white-space:nowrap">${x.date?fd(x.date):''}</span><span style="color:var(--ink2);min-width:92px;text-align:right;white-space:nowrap">${mn(x.spent)} ฿</span></div>`).join(''):'<span style="color:var(--ink3);font-size:14px">— ยังไม่มีการจัด —</span>'}</div>
      </div>
      <div>
-      <div class="sh-x"><div style="font-size:12.5px;color:var(--ink2)">ความคืบหน้าการจัดกิจกรรม</div>
-       <div style="display:flex;align-items:baseline;gap:10px;margin-top:2px"><span style="font-size:54px;font-weight:800;color:var(--accent2);line-height:1;font-variant-numeric:tabular-nums">${pc}%</span><span style="font-size:14px;color:var(--ink2)">จัดแล้ว ${timesDone(p)}${p.times?' / '+p.times:''} ครั้ง</span></div>
-       <div class="bar" style="margin-top:10px;height:12px"><i style="width:${pc}%"></i></div>
-       <div style="font-size:12.5px;color:var(--ink2);margin-top:7px"><span class="dt ${l.c}"></span>${l.t}</div></div>
       <div class="sh-x"><div style="font-size:12.5px;color:var(--ink2);margin-bottom:8px">งบประมาณโครงการ</div>
        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
-        <div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 3px"><div style="font-size:11.5px;color:var(--ink2)">งบประมาณ</div><div style="font-size:21px;font-weight:800;color:var(--navy);line-height:1.15;font-variant-numeric:tabular-nums">${mn(b)}</div><div style="font-size:10.5px;color:var(--ink3)">บาท</div></div>
-        <div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 3px"><div style="font-size:11.5px;color:var(--ink2)">ใช้ไป</div><div style="font-size:21px;font-weight:800;color:var(--accent2);line-height:1.15;font-variant-numeric:tabular-nums">${mn(s)}</div><div style="font-size:10.5px;color:var(--ink3)">บาท</div></div>
-        <div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 3px"><div style="font-size:11.5px;color:var(--ink2)">คงเหลือ</div><div style="font-size:21px;font-weight:800;color:${(b-s)>=0?'var(--ok)':'var(--bad)'};line-height:1.15;font-variant-numeric:tabular-nums">${mn(b-s)}</div><div style="font-size:10.5px;color:var(--ink3)">บาท</div></div>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 3px"><div style="font-size:11.5px;color:var(--ink2)">งบประมาณ</div><div style="font-size:22px;font-weight:800;color:var(--navy);line-height:1.15;font-variant-numeric:tabular-nums">${mn(b)}</div><div style="font-size:10.5px;color:var(--ink3)">บาท</div></div>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 3px"><div style="font-size:11.5px;color:var(--ink2)">ใช้ไป</div><div style="font-size:22px;font-weight:800;color:${b&&s/b>0.9?'var(--bad)':'var(--accent2)'};line-height:1.15;font-variant-numeric:tabular-nums">${mn(s)}</div><div style="font-size:10.5px;color:var(--ink3)">บาท</div></div>
+        <div style="background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 3px"><div style="font-size:11.5px;color:var(--ink2)">คงเหลือ</div><div style="font-size:22px;font-weight:800;color:${(b-s)>=0?'var(--ok)':'var(--bad)'};line-height:1.15;font-variant-numeric:tabular-nums">${mn(b-s)}</div><div style="font-size:10.5px;color:var(--ink3)">บาท</div></div>
        </div>
        <div class="bar nv" style="margin-top:10px"><i style="width:${b?Math.min(100,s/b*100):0}%"></i></div></div>
      </div></div></div>`)});
   sheets.push(`<div class="sheet cover" style="align-items:center;justify-content:center;text-align:center">
-   <h4 style="font-size:68px">นัดประชุมทุก 2 เดือน</h4>
-   <div style="display:flex;gap:16px;margin-top:26px;flex-wrap:wrap;justify-content:center">
-    ${['ต.ค.','ธ.ค.','ก.พ.','เม.ย.','มิ.ย.','ส.ค.'].map(m=>`<span style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:34px;padding:14px 32px;color:#ffd47e;font-weight:700;font-size:33px">${m}</span>`).join('')}
+   <h4 style="font-size:44px">นัดประชุมทุก 2 เดือน</h4>
+   <div style="display:flex;gap:12px;margin-top:22px;flex-wrap:wrap;justify-content:center">
+    ${['ต.ค.','ธ.ค.','ก.พ.','เม.ย.','มิ.ย.','ส.ค.'].map(m=>`<span style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);border-radius:24px;padding:10px 24px;color:#ffd47e;font-weight:700;font-size:22px">${m}</span>`).join('')}
    </div>
-   <div style="font-size:36px;margin-top:30px;line-height:1.55;max-width:1150px">
+   <div style="font-size:24px;margin-top:24px;line-height:1.6;max-width:900px">
     กรุณาบันทึกความคืบหน้าโครงการในระบบ<br>ก่อนเข้าประชุมครั้งถัดไป
    </div>
-   <div style="font-size:30px;margin-top:22px;color:#ffd47e;font-weight:600">ขอบคุณครับ</div>
+   <div style="font-size:19px;margin-top:20px;color:#ffd47e;font-weight:600">ขอบคุณครับ</div>
   </div>`);
  }
 
