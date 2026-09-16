@@ -32,6 +32,12 @@ var META_KEYS = ['persons','roles','emails','pw','kpis','seq','intake','meetDate
 /* ==== แจ้งเตือนทางอีเมล ====
  * เปลี่ยนอีเมลเลขานุการที่นี่ได้ตามต้องการ */
 var SEC_EMAIL = 'parichart.sa@chula.ac.th';
+
+/* ===== รหัสลับยืนยันตัวตน =====
+ * ต้องตรงกับค่า API_TOKEN ในไฟล์ HTML เสมอ
+ * คำขอที่ไม่แนบรหัสนี้มาด้วย จะถูกปฏิเสธทันที (กันคนที่รู้ URL แต่ไม่ใช่ผู้ใช้ระบบ)
+ * หากต้องการเปลี่ยนรหัส ต้องแก้ทั้ง 2 ไฟล์พร้อมกัน แล้ว deploy ใหม่ */
+var API_TOKEN = 'culac-fe00xi0ylbmfhhenhgmv';
 var TH_MONTHS_ = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 
 /** จัดรูปแบบตัวเลขเงิน เช่น 85000 -> "85,000.00" */
@@ -124,6 +130,7 @@ function pullSince_(s, since){
 function doGet(e){
   try{
     var p = (e && e.parameter) || {};
+    if(String(p.token||'') !== API_TOKEN){ return jsonOut_({ ok:false, error:'unauthorized' }); }
     var s = ensure_();
     if(p.action === 'rev'){ return jsonOut_({ ok:true, rev:getRev_() }); }
     if(p.action === 'pull'){ return jsonOut_(pullSince_(s, p.since)); }
@@ -143,6 +150,7 @@ function debugLog_(msg){
 function doPost(e){
   try{
     var body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    if(String(body.token||'') !== API_TOKEN){ return jsonOut_({ ok:false, error:'unauthorized' }); }
     var changes = body.changes || {};
     var since = (body.since==null) ? null : Number(body.since);
     var lock = LockService.getScriptLock();
