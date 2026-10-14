@@ -136,6 +136,34 @@ tbody tr:last-child td{border-bottom:none}
 .empty b{display:block;color:var(--ink2);font-weight:500;font-size:15px}
 .note{background:var(--accent-bg);border:1px solid var(--accent-line);border-radius:var(--r);padding:12px 15px;font-size:13.5px;color:#8c4a11;margin-bottom:18px}
 .note.i{background:var(--info-bg);border-color:#c3daf1;color:#24507e}
+/* ===== ตารางขั้นตอนการดำเนินงาน (Gantt) ===== */
+.gt{width:100%;min-width:520px;border-collapse:collapse;font-size:12.5px;table-layout:fixed}
+.gt th,.gt td{border:1px solid var(--line2);padding:3px 4px;text-align:center}
+.gt th{background:var(--navy);color:#fff;font-weight:500;font-size:11px;line-height:1.25;min-width:30px}
+.gt th.a{text-align:left;width:34%}
+.gt td.a{text-align:left}
+.gt td.m{cursor:pointer;height:26px;background:#fff;min-width:30px}
+.gt td.m.on{background:var(--accent)}
+.gt td.m:hover{outline:2px solid var(--accent-line);outline-offset:-2px}
+.gt input.ga{width:100%;border:0;background:transparent;font-size:12.5px;padding:2px;color:var(--ink)}
+/* ===== ตารางงบประมาณรายหมวด ===== */
+.bt{width:100%;border-collapse:collapse;font-size:13px}
+.bt th,.bt td{border:1px solid var(--line2);padding:5px 7px;vertical-align:middle;color:var(--ink)}
+.bt th{background:var(--navy);color:#fff;font-weight:500;font-size:12.5px}
+.bt td.r{text-align:right;white-space:nowrap;width:160px}
+.bt tr.h td{background:var(--accent-bg);font-weight:600;color:var(--accent2)}
+.bt tr.c td{background:#faf8f4;font-weight:600}
+.bt tr.s td{background:#f1efe9;font-weight:600}
+.bt tr.t td{background:var(--navy);color:#fff;font-weight:600}
+.bt tr.t td span{color:#fff}
+.bt input{width:100%;border:0;background:transparent;font-size:13px;padding:2px;color:var(--ink)}
+.bt input.n{text-align:right}
+.bt input.auto{background:var(--ok-bg);color:var(--ok);font-weight:600;border-radius:4px;text-align:right}
+/* ===== กล่องพับเก็บได้ (ลดความรกของหน้าจอ) ===== */
+.bx{border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;margin:0 0 16px}
+.bx .bh{background:#f1efe9;padding:10px 13px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:14px;color:var(--navy);user-select:none}
+.bx .bh small{font-weight:400;color:var(--ink2);font-size:12.5px}
+.bx .bb{padding:13px;border-top:1px solid var(--line2);background:#fff}
 .tl{border-left:2px solid var(--line2);margin-left:5px;padding-left:18px}
 .tl .it{position:relative;padding-bottom:16px}
 .tl .it:after{content:'';position:absolute;left:-24px;top:8px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--card)}
@@ -296,7 +324,10 @@ tbody tr:last-child td{border-bottom:none}
 <section class="pg" id="pg-report">
  <div class="hd"><div class="row">
   <div><h2>รายงานความคืบหน้า</h2><p>บันทึกการจัดโครงการได้ทุกครั้ง ไม่จำกัดรอบ — เฉพาะผู้รับผิดชอบหลักเท่านั้น</p></div>
-  <div class="acts"></div>
+  <div class="acts">
+   <button class="btn a" onclick="printResultReport(true)">พิมพ์รายงานผลการดำเนินงานของฉัน</button>
+   <button class="btn g" onclick="exportResultCSV(true)">⬇ Excel (CSV)</button>
+  </div>
  </div></div>
  <div class="note i" id="rdInfo"></div>
  <div class="card" id="repPersonBox" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap">
@@ -357,6 +388,8 @@ tbody tr:last-child td{border-bottom:none}
    <button class="btn g" onclick="exportYearReportCSV()">⬇ Excel (CSV)</button>
    <button class="btn a" onclick="printMeetingReport()">พิมพ์รายงานสรุปมติที่ประชุม</button>
    <button class="btn g" onclick="exportMeetingReportCSV()">⬇ Excel (CSV)</button>
+   <button class="btn a" onclick="printResultReport(false)">พิมพ์รายงานผลการดำเนินงาน (ทุกโครงการ)</button>
+   <button class="btn g" onclick="exportResultCSV(false)">⬇ Excel (CSV)</button>
   </div>
  </div></div>
  <div class="card" style="padding-top:10px"><div id="sumTable"></div></div>
@@ -2823,7 +2856,16 @@ const nlp=s=>{
  if(!paras.length)return '';
  return paras.map(t=>`<p style="text-indent:2em;margin:0 0 8px;text-align:justify">${es(t)}</p>`).join('');
 };
-const fy=()=>DB.projects.filter(p=>p.fy===FY);
+/* ดึงเลขที่ท้ายรหัสโครงการมาใช้เรียงลำดับ (CULAC-PRJ-015 → 15) · ร่างที่ยังไม่มีเลขที่ให้ไปอยู่ท้ายสุด */
+const codeNo=p=>{
+ const s=String((p&&p.code)||'');
+ /* ใช้เลขที่ที่อยู่หลัง PRJ- เป็นหลัก จึงทนต่อรหัสที่มีข้อความต่อท้าย เช่น "CULAC-PRJ-015 (แก้ไข)" */
+ let m=s.match(/PRJ[^0-9]*(\d+)/i);
+ if(!m)m=s.match(/(\d+)(?!.*\d)/);   /* รหัสนอกรูปแบบ — ใช้กลุ่มตัวเลขสุดท้าย */
+ return m?+m[1]:Number.MAX_SAFE_INTEGER;
+};
+/* เรียงตามเลขที่โครงการจากน้อยไปมากเสมอ — ทุกหน้าจอ ทุกรายงาน และไฟล์ Excel ใช้ลำดับเดียวกันทั้งระบบ */
+const fy=()=>DB.projects.filter(p=>p.fy===FY).sort((a,b)=>codeNo(a)-codeNo(b)||String((a&&a.code)||'').localeCompare(String((b&&b.code)||''),'th'));
 const owned=()=>fy().filter(p=>p.owner===USER);
 const shared=()=>fy().filter(p=>p.owner!==USER&&Array.isArray(p.team)&&p.team.includes(USER));
 /* โครงการที่ "มองเห็นในภาพรวม/รายงานของศูนย์ฯ" — ไม่รวมร่างที่ยังไม่ส่ง (เป็นข้อมูลส่วนตัวของเจ้าของจนกว่าจะส่ง) */
@@ -3175,7 +3217,7 @@ function pCard(p){
     <div style="font-size:12.5px;color:var(--ink2);margin-top:5px"><span class="dt ${l.c}"></span>${l.t}</div>
     <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
      <button class="btn g s" onclick="event.stopPropagation();printProjectRegister('${p.id}')">พิมพ์ทะเบียน</button>
-     <button class="btn a s" onclick="event.stopPropagation();printProjectDoc('${p.id}')">พิมพ์เอกสาร</button></div></div>
+     <button class="btn a s" onclick="event.stopPropagation();printProposalForm('${p.id}')">พิมพ์แบบข้อเสนอ</button></div></div>
   </div>
   <div class="ft">
    <div><b>${progress(p)}%</b><span>ความก้าวหน้า</span><div class="bar sm" style="width:120px"><i style="width:${progress(p)}%"></i></div></div>
@@ -3357,10 +3399,14 @@ function printRegisterSet(ps,title){
   <title>${title} ปีงบประมาณ ${FY}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-  @page{size:A4 landscape;margin:0}
+  @page{size:A4 landscape;margin:12mm 14mm 14mm 14mm}
+  /* มาตรฐานการพิมพ์: หัวตารางซ้ำทุกหน้า · แถวไม่ถูกตัดกลางหน้า · แถวรวมพิมพ์ครั้งเดียวท้ายตาราง */
+  thead{display:table-header-group}
+  tfoot{display:table-row-group}
+  tr{page-break-inside:avoid;break-inside:avoid}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Sarabun',sans-serif;color:#1a1a1a;font-size:13px;line-height:1.5;background:#e2e2e2;padding:20px 0 60px}
-  .sheet{max-width:297mm;margin:0 auto;background:#fff;padding:12mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+  .sheet{max-width:297mm;margin:0 auto;background:#fff;padding:12mm 14mm 14mm 14mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
   .hd{text-align:center;margin-bottom:12px}
   .hd h1{font-size:17px;font-weight:700}.hd h2{font-size:15px;font-weight:600;margin-top:2px}
   .hd p{font-size:13px;color:#444;margin-top:2px}
@@ -3369,7 +3415,8 @@ function printRegisterSet(ps,title){
   th{background:#eee;text-align:center;font-weight:600}
   td.c{text-align:center}td.r{text-align:right;white-space:nowrap}
   tfoot td{font-weight:700;background:#f6f6f6}
-  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;margin:0;box-shadow:none}}
+  tbody.g{page-break-inside:avoid;break-inside:avoid}
+  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;width:auto;margin:0;box-shadow:none;padding:0!important}}
   </style></head><body>
   <style id="upage"></style>
   <style id="uzoom" media="screen"></style>
@@ -3408,9 +3455,9 @@ function printRegisterSet(ps,title){
     var o=document.getElementById('pOrient').value;
     var s=document.getElementById('pSize').value;
     var mSel=document.getElementById('pMargin').value;
-    var mm=(mSel==='none')?'0mm':(mSel==='narrow')?'8mm':'15mm';
+    var mm=(mSel==='none')?'6mm':(mSel==='narrow')?'10mm':((o==='landscape')?'12mm 14mm 14mm 14mm':'18mm 15mm 16mm 18mm');
     var w=(wmm[s]||wmm.A4)[o];
-    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:0}';
+    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:'+mm+'}';
     sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';
     sheet.style.padding=mm;
     applyZoom();
@@ -3440,7 +3487,7 @@ function printRegisterSet(ps,title){
    <p>ประจำปีงบประมาณ ${FY} (1 ตุลาคม ${FY-1} – 30 กันยายน ${FY})</p>
   </div>
   <table>
-   <thead><tr><th style="width:4%">ลำดับ</th><th style="width:30%">ชื่อโครงการ</th><th style="width:16%">ผู้รับผิดชอบ</th>
+   <thead><tr><th style="width:5.5%">ลำดับ</th><th style="width:30%">ชื่อโครงการ</th><th style="width:16%">ผู้รับผิดชอบ</th>
     <th style="width:8%">กำหนดจัด<br>(ครั้ง)</th><th style="width:8%">จัดแล้ว<br>(ครั้ง)</th><th style="width:8%">เหลือจัด<br>(ครั้ง)</th>
     <th style="width:8.7%">งบตั้งไว้<br>(บาท)</th><th style="width:8.7%">ใช้จริง<br>(บาท)</th><th style="width:8.6%">คงเหลือ<br>(บาท)</th></tr></thead>
    <tbody>${rows}</tbody>
@@ -3455,19 +3502,26 @@ function printProjectRegister(id){
  const p=gid(id);if(!p)return;
  const m=regMetrics(p),acts=reps(p);
  const rows=acts.length?acts.map((x,i)=>`<tr><td class="c">${i+1}</td><td class="c">${x.date?fd(x.date):'-'}</td><td>${es(repLabel(x))}</td><td class="c">${x.participants!==''&&x.participants!=null?x.participants:'-'}</td><td class="r">${mn(x.spent)}</td></tr>`).join('')
-  :`<tr><td colspan="5" class="c" style="color:#777">ยังไม่มีการจัดกิจกรรม</td></tr>`;
+  :`<tr><td colspan="5" class="c" style="color:#000">ยังไม่มีการจัดกิจกรรม</td></tr>`;
  const w=window.open('','_blank');
  w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
   <title>ทะเบียนโครงการ ${es(p.code)}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-  @page{size:A4 portrait;margin:0}
+  @page{size:A4 portrait;margin:18mm 15mm 16mm 18mm}
+  /* มาตรฐานการพิมพ์: หัวตารางซ้ำทุกหน้า · แถวไม่ถูกตัดกลางหน้า · แถวรวมพิมพ์ครั้งเดียวท้ายตาราง */
+  thead{display:table-header-group}
+  tfoot{display:table-row-group}
+  tr{page-break-inside:avoid;break-inside:avoid}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Sarabun',sans-serif;color:#1a1a1a;font-size:15px;line-height:1.55;background:#e2e2e2;padding:24px 0 60px}
-  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:16mm 15mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
-  .hd{text-align:center;margin-bottom:12px}
-  .hd h1{font-size:18px;font-weight:700}.hd h2{font-size:16px;font-weight:600;margin-top:2px}
-  .hd p{font-size:14px;color:#444;margin-top:2px}
+  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:18mm 15mm 16mm 18mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+  .hd{text-align:center;border-bottom:2px solid #c8671a;padding-bottom:9px;margin-bottom:4px}
+  .hd h1{font-size:14.5px;color:#000;font-weight:400}
+  .hd h2{font-size:21px;color:#c8671a;font-weight:700;margin-top:3px;line-height:1.35}
+  .hd p{font-size:14.5px;color:#000;margin-top:3px}
+  .cd{display:flex;justify-content:space-between;font-size:13.5px;margin:9px 0 10px;color:#000}
+  .cd b{color:#a9540f}
   .sum{border:1px solid #333;border-radius:6px;padding:10px 14px;margin-top:12px;font-size:14px}
   .sum b{color:#a9540f}
   .sum span{display:inline-block;margin-right:18px}
@@ -3476,7 +3530,8 @@ function printProjectRegister(id){
   th{background:#eee;text-align:center;font-weight:600}
   td.c{text-align:center;white-space:nowrap}td.r{text-align:right;white-space:nowrap}
   tfoot td{font-weight:700;background:#f6f6f6}
-  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;margin:0;box-shadow:none}}
+  tbody.g{page-break-inside:avoid;break-inside:avoid}
+  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;width:auto;margin:0;box-shadow:none;padding:0!important}}
   </style></head><body>
   <style id="upage"></style>
   <style id="uzoom" media="screen"></style>
@@ -3515,9 +3570,9 @@ function printProjectRegister(id){
     var o=document.getElementById('pOrient').value;
     var s=document.getElementById('pSize').value;
     var mSel=document.getElementById('pMargin').value;
-    var mm=(mSel==='none')?'0mm':(mSel==='narrow')?'8mm':'15mm';
+    var mm=(mSel==='none')?'6mm':(mSel==='narrow')?'10mm':((o==='landscape')?'12mm 14mm 14mm 14mm':'18mm 15mm 16mm 18mm');
     var w=(wmm[s]||wmm.A4)[o];
-    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:0}';
+    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:'+mm+'}';
     sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';
     sheet.style.padding=mm;
     applyZoom();
@@ -3544,8 +3599,9 @@ function printProjectRegister(id){
   <div class="hd">
    <h1>ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย</h1>
    <h2>${es(p.name)}</h2>
-   <p>${es(p.code)} · ปีงบประมาณ ${FY}</p>
+   <p>ทะเบียนโครงการ · ประจำปีงบประมาณ พ.ศ. ${FY}</p>
   </div>
+  <div class="cd"><div>รหัสโครงการ <b>${es(p.code)}</b></div><div>สถานะ: ${es(ST[p.status]?ST[p.status].t:p.status)}</div></div>
   <div style="font-size:14px;color:#000;margin-top:2px">ผู้รับผิดชอบ: ${es(p.owner)}${p.team&&p.team.length?' · ผู้ร่วมโครงการ: '+es([].concat(p.team).join(', ')):''}</div>
   <div class="sum">
    <span>กำหนดจัด <b>${m.planned}</b> ครั้ง</span><span>จัดไปแล้ว <b>${m.done}</b> ครั้ง</span><span>เหลืออีก <b>${m.left}</b> ครั้ง</span><br>
@@ -3562,145 +3618,6 @@ function printProjectRegister(id){
  logLocal('พิมพ์ทะเบียนรายโครงการ',p.code,p.name);
 }
 
-function printProjectDoc(id){
- const p=gid(id);if(!p)return;
- const approved=(p.status==='running'||p.status==='closed');
- const bReq=p.budgetRequested||0, bApp=p.budgetApproved;
- const team=(Array.isArray(p.team)&&p.team.length)?p.team.join(', '):'—';
- const kpiTxt=(p.kpi&&p.kpi!=='NA')?p.kpi+' — '+(KPIS[p.kpi]||''):'ยังไม่ระบุ';
- const row=(l,v)=>`<tr><th>${l}</th><td>${v}</td></tr>`;
- const sec=(t,v)=>`<div class="sec"><div class="sh">${t}</div><div class="sb">${v&&String(v).trim()?nlp(v):'<span style="color:#888">—</span>'}</div></div>`;
- const w=window.open('','_blank');
- w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
-  <title>${es(p.code)} - ${es(p.name)}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-  @page{size:A4 portrait;margin:0}
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Sarabun',sans-serif;color:#1a1a1a;font-size:14px;line-height:1.6;background:#e2e2e2;padding:24px 0 60px}
-  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:15mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
-  .hd{text-align:center;border-bottom:2px solid #c8671a;padding-bottom:8px;margin-bottom:12px}
-  .hd h1{font-size:16px;color:#555;font-weight:400}
-  .hd h2{font-size:20px;color:#c8671a;font-weight:700;margin-top:2px}
-  .hd p{font-size:13px;color:#888;margin-top:2px}
-  table.meta{width:100%;border-collapse:collapse;margin-bottom:6px}
-  table.meta th,table.meta td{border:1px solid #444;padding:6px 9px;vertical-align:top;font-size:14px}
-  table.meta th{background:#eee;text-align:left;font-weight:600;width:34%;white-space:nowrap}
-  .sec{margin-top:12px}
-  .sh{font-weight:600;color:#a9540f;border-bottom:1px solid #ddd;padding-bottom:3px;margin-bottom:4px;font-size:14.5px}
-  .sb{font-size:14px;text-align:justify}
-  .appr{border:1px solid #2e7d32;border-radius:6px;padding:9px 13px;margin-top:14px;font-size:14px;background:#f3faf4}
-  .appr b{color:#2e7d32}
-  .sign{display:flex;justify-content:space-between;margin-top:30px;font-size:14px}
-  .sign div{text-align:center;width:44%}
-  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;margin:0;box-shadow:none}}
-  </style></head><body>
-  <style id="upage"></style>
-  <style id="uzoom" media="screen"></style>
-  <div class="noprint" style="position:sticky;top:0;left:0;right:0;background:#12203c;color:#fff;padding:8px 14px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;z-index:9;font-family:'Sarabun',sans-serif;font-size:13px">
-   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-    <span style="font-weight:600">ตั้งค่าการพิมพ์</span>
-    <label style="display:flex;gap:4px;align-items:center">แนววาง
-     <select id="pOrient" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
-      <option value="portrait">แนวตั้ง</option><option value="landscape">แนวนอน</option></select></label>
-    <label style="display:flex;gap:4px;align-items:center">กระดาษ
-     <select id="pSize" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
-      <option value="A4">A4</option><option value="A3">A3</option><option value="Letter">Letter</option></select></label>
-    <label style="display:flex;gap:4px;align-items:center">ขอบ
-     <select id="pMargin" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
-      <option value="normal">ปกติ</option><option value="narrow">แคบ</option><option value="none">ไม่มีขอบ</option></select></label>
-    <label style="display:flex;gap:6px;align-items:center">พรีวิว
-     <input id="pZoom" type="range" min="50" max="180" value="100" oninput="applyZoom()" style="vertical-align:middle;width:110px">
-     <span id="pZoomV" style="font-size:12px;min-width:38px">100%</span></label>
-   </div>
-   <span style="display:flex;gap:8px">
-    <button onclick="window.print()" style="background:#c8671a;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">พิมพ์ / บันทึก PDF</button>
-    <button onclick="window.close()" style="background:#33415c;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:14px;cursor:pointer">ปิด</button>
-   </span>
-  </div>
-  <script>
-  (function(){
-   var sheet=document.querySelector('.sheet');
-   var basePad=null;
-   try{basePad=getComputedStyle(sheet).paddingTop;}catch(e){}
-   var wmm={A4:{portrait:210,landscape:297},A3:{portrait:297,landscape:420},Letter:{portrait:216,landscape:279}};
-   var oSel=document.getElementById('pOrient');
-   var startLandscape=false;
-   try{var mw=getComputedStyle(sheet).maxWidth;if(mw&&parseFloat(mw)>260)startLandscape=true;}catch(e){}
-   if(oSel)oSel.value=startLandscape?'landscape':'portrait';
-   window.applyPrint=function(){
-    var o=document.getElementById('pOrient').value;
-    var s=document.getElementById('pSize').value;
-    var mSel=document.getElementById('pMargin').value;
-    var mm=(mSel==='none')?'0mm':(mSel==='narrow')?'8mm':'15mm';
-    var w=(wmm[s]||wmm.A4)[o];
-    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:0}';
-    sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';
-    sheet.style.padding=mm;
-    applyZoom();
-   };
-   window.applyZoom=function(){
-    var z=parseInt(document.getElementById('pZoom').value,10)/100;
-    document.getElementById('uzoom').textContent='@media screen{.sheet{zoom:'+z+'}}';
-    document.getElementById('pZoomV').textContent=Math.round(z*100)+'%';
-   };
-   function autofit(){
-    try{
-     var uz=document.getElementById('uzoom');if(uz)uz.textContent='';
-     var w=sheet.getBoundingClientRect().width;if(!w)return;
-     var avail=window.innerWidth-48;
-     var z=Math.min(1.6,Math.max(0.5,avail/w));
-     var zr=document.getElementById('pZoom');zr.value=Math.round(z*100);applyZoom();
-    }catch(e){}
-   }
-   setTimeout(autofit,80);
-   window.addEventListener('resize',function(){clearTimeout(window._rf);window._rf=setTimeout(autofit,150);});
-  })();
-  <\/script>
-  <div class="sheet">
-  <div class="hd">
-   <h1>ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย</h1>
-   <h2>${es(p.name)}</h2>
-   <p>${es(p.code)} · ปีงบประมาณ ${p.fy||FY}</p>
-  </div>
-  <table class="meta">
-   ${row('ผู้รับผิดชอบโครงการ (ประธาน)',es(p.owner))}
-   ${row('ผู้ร่วมโครงการ',es(team))}
-   ${row('สถานที่จัดโครงการ',p.location?es(p.location):'—')}
-   ${row('จำนวนผู้เข้าร่วม',p.participants?es(p.participants):'—')}
-   ${row('กำหนดวันจัดโครงการ',p.eventDate?es(p.eventDate):'—')}
-   ${row('จำนวนครั้งที่จัด',(p.times||1)+' ครั้ง')}
-   ${row('ตัวชี้วัด (SDA)',es(kpiTxt))}
-   ${row('งบประมาณที่ขอ',mn(bReq)+' บาท')}
-   ${row('งบประมาณที่อนุมัติ',bApp!=null?mn(bApp)+' บาท':'— (ยังไม่ผ่านมติอนุมัติ)')}
-   ${row('สถานะโครงการ',ST[p.status]?ST[p.status].t:es(p.status))}
-  </table>
-  ${sec('หลักการและเหตุผล',p.rationale)}
-  ${sec('วัตถุประสงค์',p.objective)}
-  ${sec('วิธีดำเนินการ',p.method)}
-  ${sec('ประโยชน์ที่คาดว่าจะได้รับ',p.benefit)}
-  ${sec('ตัวชี้วัดความสำเร็จของโครงการ',p.target)}
-  ${approved?`<div class="appr"><b>ผลการพิจารณาของคณะกรรมการบริหารศูนย์ฯ</b><br>
-    มติ: อนุมัติ${p.meetingRef?' ('+es(p.meetingRef)+')':''}${p.approvedAt?' · วันที่อนุมัติ '+fd(p.approvedAt):''}<br>
-    อนุมัติงบประมาณ ${bApp!=null?mn(bApp):mn(bReq)} บาท${p.condition?'<br>เงื่อนไข: '+nl(es(p.condition)):''}</div>`
-   :`<div class="appr" style="border-color:#8a6d1f;background:#fdfbf3"><b style="color:#8a6d1f">สถานะการพิจารณา</b><br>อยู่ระหว่างเสนอคณะกรรมการบริหารศูนย์ฯ พิจารณาอนุมัติ</div>`}
-  ${p.status==='closed'?`<div class="sec"><div class="sh">สรุปผลการดำเนินงานโครงการ</div>
-   <table class="meta" style="margin-top:4px">
-    ${row('จำนวนครั้งที่จัดจริง',timesDone(p)+' ครั้ง'+(p.times?' (จากแผน '+p.times+' ครั้ง)':''))}
-    ${row('งบประมาณที่ใช้จริง',mn(spent(p))+' บาท'+(bApp!=null?' · คงเหลือ '+mn((bApp||0)-spent(p))+' บาท':''))}
-   </table>
-   <table style="width:100%;border-collapse:collapse;margin-top:8px">
-    <thead><tr><th style="border:1px solid #444;padding:5px 6px;background:#eee;width:44px">ครั้ง</th><th style="border:1px solid #444;padding:5px 6px;background:#eee;text-align:left">กิจกรรม / ผลการดำเนินงาน</th><th style="border:1px solid #444;padding:5px 6px;background:#eee;width:110px">วันที่จัด</th><th style="border:1px solid #444;padding:5px 6px;background:#eee;width:110px">งบที่ใช้ (บาท)</th></tr></thead>
-    <tbody>${reps(p).length?reps(p).map((x,i)=>`<tr><td style="border:1px solid #444;padding:5px 6px;text-align:center">${i+1}</td><td style="border:1px solid #444;padding:5px 6px">${es(repLabel(x))}</td><td style="border:1px solid #444;padding:5px 6px;text-align:center">${x.date?fd(x.date):'—'}</td><td style="border:1px solid #444;padding:5px 6px;text-align:right">${mn(x.spent)}</td></tr>`).join(''):'<tr><td colspan="4" style="border:1px solid #444;padding:5px 6px;text-align:center;color:#888">— ไม่มีการบันทึกการจัด —</td></tr>'}
-     <tr style="font-weight:700;background:#f6f6f6"><td colspan="3" style="border:1px solid #444;padding:5px 6px;text-align:right">รวมใช้จ่าย</td><td style="border:1px solid #444;padding:5px 6px;text-align:right">${mn(spent(p))}</td></tr>
-    </tbody></table>
-   ${p.outcome?`<div style="margin-top:8px"><b style="color:#a9540f">ผลสัมฤทธิ์ของโครงการ (เทียบตัวชี้วัด)</b><div style="margin-top:3px">${nl(es(p.outcome))}</div></div>`:''}
-  </div>`:''}
-  </div>
-  </body></html>`);
- w.document.close();
- logLocal('พิมพ์เอกสารโครงการ',p.code,p.name);
-}
 function delP(id){
  const p=gid(id);if(!p)return;
  if(!confirm('ยืนยันการลบโครงการ\n'+p.code+' · '+p.name+'\n\nการลบนี้ย้อนกลับไม่ได้'))return;
@@ -3761,12 +3678,307 @@ function paintSummary(){
   </tbody></table></div>`
  :'<div class="empty"><b>ไม่มีโครงการตามเงื่อนไข</b>ลองเปลี่ยนตัวกรองด้านบน</div>';
 }
+/* ==========================================================
+   พิมพ์ "แบบข้อเสนอขอโครงการ" ฉบับทางการของศูนย์ฯ
+   ส่วนที่ยังไม่ได้กรอกจะพิมพ์เป็นเส้นประให้เขียนด้วยมือได้
+   ========================================================== */
+function printProposalForm(id){
+ const p=gid(id);if(!p)return;
+ const has=v=>!!(v!=null&&String(v).trim());
+ const team=(Array.isArray(p.team)&&p.team.filter(Boolean).length)?es(p.team.filter(Boolean).join(', ')):'';
+ const hasKpi=!!(p.kpi&&p.kpi!=='NA'&&KPIS[p.kpi]);
+ const kpiTxt=hasKpi?es(p.kpi+' — '+(KPIS[p.kpi]||'')):'';
+ const per=(p.startDate||p.endDate)
+   ?((p.startDate?fd(p.startDate):'…………')+'  ถึง  '+(p.endDate?fd(p.endDate):'…………')+(has(p.eventDate)?'<div style="margin-top:3px">กำหนดจัดกิจกรรม: '+es(p.eventDate)+'</div>':''))
+   :(has(p.eventDate)?es(p.eventDate):'');
+ const bd=(p.budget&&bHasData(p.budget))?p.budget:null;
+ const g=(p.gantt&&gtHasData(p.gantt))?p.gantt:null;
+ const sumRev=bd?(bd.rev||[]).reduce((t,r)=>t+bNum(r.amount),0):0;
+ let sumExp=0;if(bd)BCATS.forEach(x=>{sumExp+=((bd.cats||{})[x[0]]||[]).reduce((t,r)=>t+bNum(r.amount),0)});
+ const budLine=bd
+   ?`ประมาณการรายรับรวม <b>${mn(sumRev)}</b> บาท · ประมาณการรายจ่ายรวม <b>${mn(sumExp)}</b> บาท (รายละเอียดตามตารางด้านล่าง)`
+   :`งบประมาณที่เสนอขอ <b>${mn(p.budgetRequested)}</b> บาท${p.budgetApproved!=null?` · งบที่ได้รับอนุมัติ <b>${mn(p.budgetApproved)}</b> บาท`:''}`;
+ const appr=(p.status==='running'||p.status==='closed');
+ /* เมื่อโครงการได้รับอนุมัติแล้ว เอกสารฉบับเดียวกันนี้จะต่อท้ายด้วยผลการดำเนินงานจริง */
+ const RA=appr?reps(p):[];
+ const bApp2=(p.budgetApproved!=null)?p.budgetApproved:(p.budgetRequested||0);
+ const used2=spent(p);
+ const RESULT=!appr?'':`<div class="rs"><div class="rh">ผลการดำเนินงานโครงการ</div>
+   <div class="sm">จัดไปแล้ว <b>${timesDone(p)}</b> ครั้ง จากแผน <b>${p.times||1}</b> ครั้ง &nbsp;·&nbsp; ใช้งบประมาณจริง <b>${mn(used2)}</b> บาท จากงบที่อนุมัติ <b>${mn(bApp2)}</b> บาท &nbsp;·&nbsp; คงเหลือ <b>${mn(bApp2-used2)}</b> บาท</div>
+   <table class="rt"><thead><tr><th style="width:52px">ครั้งที่</th><th style="width:104px">วันที่จัด</th><th>ผลการดำเนินงาน</th><th style="width:78px">ผู้เข้าร่วม</th><th style="width:112px">งบที่ใช้ (บาท)</th></tr></thead><tbody>
+   ${RA.length?RA.map((x,i)=>`<tr><td class="c">${i+1}</td><td class="c">${x.date?fd(x.date):'—'}</td><td>${x.result?nl(x.result):'—'}</td><td class="c">${x.participants?es(x.participants):'—'}</td><td class="r">${mn(x.spent)}</td></tr>`).join(''):'<tr><td class="c" colspan="5">— ยังไม่มีการบันทึกการจัดโครงการ —</td></tr>'}
+   <tr class="t"><td colspan="4" class="r">รวมใช้จ่าย</td><td class="r">${mn(used2)}</td></tr>
+   </tbody></table>
+   ${(p.outcome&&String(p.outcome).trim())?`<div class="oc"><b>ผลสัมฤทธิ์ของโครงการ (เทียบตัวชี้วัด)</b>${nlp(p.outcome)}</div>`:''}
+  </div>`;
+ /* เก็บเฉพาะหัวข้อที่มีข้อมูลจริง แล้วค่อยไล่เลข 1,2,3… ตอนพิมพ์ — หัวข้อที่ไม่ได้กรอกจะไม่ขึ้นเลย */
+ const IT=[];
+ const add=(t,body,cls)=>{if(body!=null&&String(body).trim())IT.push({t:t,b:body,c:cls||''})};
+ add('ชื่อโครงการ',`<b style="font-size:15px">${es(p.name)}</b>`);
+ if(has(p.projType))add('ลักษณะโครงการ',`<b>${es(p.projType)}</b>`);
+ add('หน่วยงาน / ผู้รับผิดชอบโครงการ',`หน่วยงาน: ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย`
+  +`<div style="margin-top:3px">หัวหน้าโครงการ: <b>${es(p.owner)}</b>${has(p.ownerTitle)?' &nbsp;ตำแหน่ง '+es(p.ownerTitle):''}</div>`
+  +(team?`<div style="margin-top:3px">ผู้ร่วมโครงการ: ${team}</div>`:''));
+ if(has(p.rationale))add('หลักการและเหตุผล',nlp(p.rationale));
+ if(has(p.objective))add('วัตถุประสงค์',nlp(p.objective));
+ if(has(p.participants))add('กลุ่มเป้าหมาย / ผู้เข้าร่วมโครงการ',es(p.participants));
+ if(has(p.method))add('วิธีดำเนินการ',nlp(p.method));
+ if(per||p.times)add('ระยะเวลาดำเนินการ',(per||'')+(p.times?`<div style="margin-top:3px">จำนวนครั้งที่จัด: ${p.times} ครั้ง</div>`:''));
+ if(has(p.location))add('สถานที่ดำเนินการ',es(p.location));
+ if(g)add('ขั้นตอนการดำเนินงาน',`<div>${gtTable(g,false)}</div>`);
+ if(hasKpi||has(p.target))add('ตัวชี้วัดความสำเร็จของโครงการ',
+   (hasKpi?`<div>ตัวชี้วัด (SDA) ของศูนย์ฯ ที่สนับสนุน: ${kpiTxt}</div>`:'')
+   +(has(p.target)?`${hasKpi?'<div style="margin-top:5px">ตัวชี้วัดความสำเร็จ:</div>':''}${nlp(p.target)}`:''));
+ if(has(p.benefit))add('ประโยชน์ที่คาดว่าจะได้รับ',nlp(p.benefit));
+ if(has(p.fundSource))add('แหล่งงบประมาณ',es(p.fundSource));
+ add('งบประมาณ',`<div>${budLine}</div>${bd?`<div style="margin-top:9px">${bTable(bd,false)}</div>`:''}`,'big');
+ if(bd&&has(bd.note))add('หมายเหตุ',nlp(bd.note));
+ const ITEMS=IT.map((x,i)=>`<div class="it${x.c?' '+x.c:''}"><div class="ih"><span class="no">${i+1}.</span>${x.t}</div><div class="ib">${x.b}</div></div>`).join('');
+ const w=window.open('','_blank');
+ w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
+ <title>แบบข้อเสนอขอโครงการ ${es(p.code)}</title>
+ <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+ <style>
+ @page{size:A4 portrait;margin:18mm 15mm 16mm 18mm}
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{font-family:'Sarabun',sans-serif;color:#000;font-size:14px;line-height:1.65;background:#e2e2e2;padding:24px 0 60px}
+ .sheet{width:210mm;margin:0 auto 16px;background:#fff;padding:18mm 15mm 16mm 18mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+ .hd{text-align:center;border-bottom:2px solid #c8671a;padding-bottom:9px;margin-bottom:6px}
+ .hd .o{font-size:14.5px;color:#000}
+ .hd h1{font-size:22px;font-weight:700;color:#c8671a;margin-top:3px;letter-spacing:.3px}
+ .hd .y{font-size:14.5px;color:#000;margin-top:2px}
+ .cd{display:flex;justify-content:space-between;font-size:13.5px;margin:9px 0 4px;color:#000}
+ .cd b{color:#a9540f}
+ .it{margin-top:11px;padding-top:2px;display:flow-root;page-break-inside:avoid;break-inside:avoid}
+ .it.big{page-break-inside:auto;break-inside:auto}
+ .ih{font-weight:600;color:#1b2a4a;font-size:14.5px;page-break-after:avoid;page-break-inside:avoid;break-inside:avoid;break-after:avoid}
+ .ih .no{display:inline-block;min-width:22px;margin-right:6px;color:#a9540f;font-weight:700}
+ .ib{font-size:14px;padding-left:29px;margin-top:2px;text-align:justify;color:#000;orphans:2;widows:2}
+ .bl{display:inline-block;min-width:60%;border-bottom:1px dotted #777;height:1.1em;vertical-align:bottom}
+ .pb{page-break-before:always}
+ .nb{page-break-inside:avoid;break-inside:avoid}
+ table.gt{width:100%;border-collapse:collapse;font-size:11.5px}
+ table.gt tr{page-break-inside:avoid}
+ table.gt th,table.gt td{border:1px solid #555;padding:3px 4px;text-align:center;color:#000}
+ table.gt th{background:#1b2a4a;color:#fff;font-weight:500;font-size:10.5px;line-height:1.2}
+ table.gt th.a{text-align:left;width:30%}
+ table.gt td.a{text-align:left;font-size:12px}
+ table.gt td.m{height:20px;background:#fff}
+ table.gt td.m.on{background:#c8671a}
+ table.bt{width:100%;border-collapse:collapse;font-size:13px}
+ table.bt tr{page-break-inside:avoid}
+ table.bt th,table.bt td{border:1px solid #555;padding:4px 7px;color:#000}
+ table.bt th{background:#1b2a4a;color:#fff;font-weight:500;font-size:12.5px}
+ table.bt td.r{text-align:right;white-space:nowrap;width:150px}
+ table.bt tr.h td{background:#fbf1e8;font-weight:600;color:#a9540f}
+ table.bt tr.c td{background:#f6f4f0;font-weight:600}
+ table.bt tr.s td{background:#eeebe5;font-weight:600}
+ table.bt tr.t td{background:#1b2a4a;color:#fff;font-weight:600}
+ .sg{display:flex;justify-content:center;margin-top:42px;padding-top:6px;page-break-inside:avoid}
+ .sg>div{width:52%;text-align:center;font-size:13.5px;color:#000;line-height:1.55}
+ .appr{border:1px solid #2e7d32;border-radius:6px;padding:10px 14px;margin-top:24px;font-size:14px;background:#f3faf4;color:#000;page-break-inside:avoid;break-inside:avoid}
+ .appr b{color:#2e7d32}
+ .rs{margin-top:20px;page-break-inside:auto}
+ .rs>.rh{font-weight:700;color:#1b2a4a;font-size:15.5px;border-bottom:2px solid #1b2a4a;padding-bottom:5px;margin-bottom:8px;page-break-after:avoid}
+ .rs .sm{font-size:13.5px;margin-bottom:8px}
+ table.rt{width:100%;border-collapse:collapse;font-size:13px}
+ table.rt tr{page-break-inside:avoid}
+ table.rt th,table.rt td{border:1px solid #555;padding:5px 7px;color:#000;vertical-align:top}
+ table.rt th{background:#1b2a4a;color:#fff;font-weight:500;font-size:12.5px}
+ table.rt td.c{text-align:center;white-space:nowrap}
+ table.rt td.r{text-align:right;white-space:nowrap}
+ table.rt tr.t td{background:#eeebe5;font-weight:700}
+ .oc{margin-top:10px;font-size:13.5px}
+ .oc b{color:#a9540f}
+ .sg .ln{height:56px;margin-bottom:6px}
+ .noprint{text-align:center;margin:0 auto 14px;max-width:210mm}
+ .noprint button{font-family:'Sarabun',sans-serif;background:#1b2a4a;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:15px;cursor:pointer;font-weight:600}
+ @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{width:auto;margin:0;box-shadow:none;padding:0}}
+ </style></head><body>
+ <div class="noprint"><button onclick="window.print()">🖨 สั่งพิมพ์ / บันทึกเป็น PDF</button></div>
+ <div class="sheet">
+  <div class="hd"><div class="o">ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย</div>
+   <h1>แบบข้อเสนอขอโครงการ</h1>
+   <div class="y">ประจำปีงบประมาณ พ.ศ. ${p.fy}</div></div>
+  <div class="cd"><div>รหัสโครงการ <b>${es(p.code)}</b></div><div>สถานะ: ${es((ST[p.status]||{}).t||p.status)}</div></div>
+  ${ITEMS}
+  ${RESULT}
+  <div class="sg">
+   <div><div class="ln"></div>( ${es(p.owner)} )<div>ผู้เสนอโครงการ / หัวหน้าโครงการ</div>${has(p.ownerTitle)?`<div style="font-size:12.5px">${es(p.ownerTitle)}</div>`:''}</div>
+  </div>
+  ${appr?`<div class="appr"><b>ผลการพิจารณาของคณะกรรมการบริหารศูนย์ฯ</b><br>
+    มติ: อนุมัติ${p.meetingRef?' ('+es(p.meetingRef)+')':''}${p.approvedAt?' · วันที่อนุมัติ '+fd(p.approvedAt):''}<br>
+    อนุมัติงบประมาณ ${p.budgetApproved!=null?mn(p.budgetApproved):mn(p.budgetRequested)} บาท${p.condition?'<br>เงื่อนไข: '+nl(es(p.condition)):''}</div>`
+   :`<div class="appr" style="border-color:#8a6d1f;background:#fdfbf3"><b style="color:#8a6d1f">สถานะการพิจารณา</b><br>อยู่ระหว่างเสนอคณะกรรมการบริหารศูนย์ฯ พิจารณาอนุมัติ</div>`}
+ </div>
+ <\/body><\/html>`);
+ w.document.close();
+}
+
+/* ==========================================================
+   รายงานผลการดำเนินงานโครงการ — เน้น "ผลที่เกิดขึ้นจริง" อย่างเดียว
+   ไม่มีวัตถุประสงค์/ประโยชน์ที่คาดว่าจะได้รับ · แสดงเฉพาะโครงการที่จัดไปแล้ว
+   ========================================================== */
+function resultScope(mine){const b=fyPub().filter(p=>['running','closed'].includes(p.status));return mine?b.filter(p=>p.owner===USER):b;}
+function resultList(mine){return resultScope(mine).filter(p=>reps(p).length);}
+function printResultReport(mine){
+ const ps=resultList(mine);
+ if(!ps.length)return toast(mine?'ยังไม่มีโครงการของคุณที่บันทึกผลการจัดในปีงบประมาณนี้':'ยังไม่มีโครงการที่บันทึกผลการจัดในปีงบประมาณนี้');
+ const notYet=resultScope(mine).filter(p=>!reps(p).length);
+ let tTimes=0,tPeople=0,tSpent=0;
+ ps.forEach(p=>{reps(p).forEach(r=>{tTimes++;tPeople+=(+r.participants||0);tSpent+=(+r.spent||0)})});
+ const closedN=ps.filter(p=>p.status==='closed').length;
+ const blocks=ps.map((p,i)=>{
+  const R=reps(p),sub=R.reduce((a,x)=>a+(+x.spent||0),0),ppl=R.reduce((a,x)=>a+(+x.participants||0),0);
+  const bA=(p.budgetApproved!=null)?p.budgetApproved:(p.budgetRequested||0);
+  return `<div class="pb">
+   <div class="ph"><span class="n">${i+1}</span><b>${es(p.code)}</b> · ${es(p.name)}
+     <span class="tg ${p.status==='closed'?'done':'run'}">${es((ST[p.status]||{}).t||p.status)}</span></div>
+   <div class="pm">หัวหน้าโครงการ: ${es(p.owner)}${(p.team&&[].concat(p.team).filter(Boolean).length)?' · ผู้ร่วมโครงการ: '+es([].concat(p.team).filter(Boolean).join(', ')):''}
+     &nbsp;·&nbsp; จัดแล้ว <b>${R.length}</b> / ${p.times||1} ครั้ง &nbsp;·&nbsp; ใช้งบ <b>${mn(sub)}</b> จาก <b>${mn(bA)}</b> บาท &nbsp;·&nbsp; คงเหลือ <b>${mn(bA-sub)}</b> บาท</div>
+   <table class="rt"><thead><tr><th style="width:44px">ครั้งที่</th><th style="width:96px">วันที่จัด</th><th>ผลการดำเนินงาน</th><th style="width:66px">ผู้เข้าร่วม</th><th style="width:96px">งบที่ใช้ (บาท)</th></tr></thead><tbody>
+    ${R.map((x,j)=>`<tr><td class="c">${j+1}</td><td class="c">${x.date?fd(x.date):'—'}</td><td>${x.result?nl(x.result):'—'}${x.issue&&String(x.issue).trim()?`<div class="is"><b>ปัญหา/อุปสรรค:</b> ${nl(x.issue)}</div>`:''}</td><td class="c">${x.participants?es(x.participants):'—'}</td><td class="r">${mn(x.spent)}</td></tr>`).join('')}
+    <tr class="st"><td colspan="3" class="r">รวมของโครงการนี้</td><td class="c">${ppl||'—'}</td><td class="r">${mn(sub)}</td></tr>
+   </tbody></table>
+   ${(p.outcome&&String(p.outcome).trim())?`<div class="oc"><b>ผลสัมฤทธิ์ของโครงการ (เทียบตัวชี้วัด)</b>${nlp(p.outcome)}</div>`:''}
+  </div>`}).join('');
+ const w=window.open('','_blank');
+ w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
+  <title>รายงานผลการดำเนินงานโครงการ ปีงบประมาณ ${FY}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+  @page{size:A4 portrait;margin:18mm 15mm 16mm 18mm}
+  thead{display:table-header-group}
+  tfoot{display:table-row-group}
+  tr{page-break-inside:avoid;break-inside:avoid}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Sarabun',sans-serif;color:#000;font-size:13.5px;line-height:1.6;background:#e2e2e2;padding:0 0 60px}
+  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:18mm 15mm 16mm 18mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+  .hd{text-align:center;border-bottom:2px solid #c8671a;padding-bottom:9px;margin-bottom:4px}
+  .hd h1{font-size:14.5px;color:#000;font-weight:400}
+  .hd h2{font-size:21px;color:#c8671a;font-weight:700;margin-top:3px;line-height:1.35}
+  .hd p{font-size:13.5px;color:#000;margin-top:3px}
+  .ov{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:9px;margin:12px 0 14px}
+  .ov .b{border:1px solid #bbb;border-radius:9px;padding:9px 6px;text-align:center}
+  .ov .b .n{font-size:18px;font-weight:800;color:#14233f;white-space:nowrap}
+  .ov .b .l{font-size:10px;color:#000;margin-top:2px}
+  .pb{margin-top:14px;page-break-inside:auto}
+  .ph{font-size:14px;font-weight:600;color:#14233f;border-left:4px solid #c8671a;padding:4px 0 4px 9px;page-break-after:avoid}
+  .ph .n{display:inline-block;min-width:20px;color:#a9540f;font-weight:700}
+  .tg{font-size:10.5px;font-weight:600;border:1px solid;border-radius:4px;padding:1px 7px;margin-left:6px;white-space:nowrap}
+  .tg.done{color:#1c7a53;border-color:#1c7a53}
+  .tg.run{color:#2a5e94;border-color:#2a5e94}
+  .pm{font-size:12px;margin:3px 0 6px;padding-left:13px;page-break-after:avoid}
+  table.rt{width:100%;border-collapse:collapse;font-size:12.5px}
+  table.rt th,table.rt td{border:1px solid #555;padding:4px 6px;vertical-align:top;color:#000}
+  table.rt th{background:#14233f;color:#fff;font-weight:500;font-size:11.5px}
+  table.rt td.c{text-align:center;white-space:nowrap}
+  table.rt td.r{text-align:right;white-space:nowrap}
+  table.rt tr.st td{background:#f1efe9;font-weight:700}
+  .is{font-size:11.5px;margin-top:2px;color:#000}
+  .oc{font-size:12.5px;margin-top:6px;padding-left:13px}
+  .oc b{color:#a9540f}
+  .gt{margin-top:16px;border:1px solid #14233f;border-radius:5px;overflow:hidden;page-break-inside:avoid}
+  .gt .h{background:#14233f;color:#fff;font-weight:600;padding:5px 12px;font-size:13.5px}
+  .gt .b{padding:8px 13px;font-size:13.5px;line-height:1.9}
+  .nt{margin-top:12px;font-size:12.5px;border:1px solid #bbb;border-left:4px solid #a9540f;border-radius:6px;padding:8px 12px;page-break-inside:avoid}
+  .noprint button{font-family:'Sarabun',sans-serif}
+  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;width:auto;margin:0;box-shadow:none;padding:0!important}}
+  </style></head><body>
+  <style id="upage"></style>
+  <style id="uzoom" media="screen"></style>
+  <div class="noprint" style="position:sticky;top:0;left:0;right:0;background:#12203c;color:#fff;padding:8px 14px;display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;z-index:9;font-family:'Sarabun',sans-serif;font-size:13px">
+   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-weight:600">ตั้งค่าการพิมพ์</span>
+    <label style="display:flex;gap:4px;align-items:center">แนววาง
+     <select id="pOrient" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
+      <option value="portrait">แนวตั้ง</option><option value="landscape">แนวนอน</option></select></label>
+    <label style="display:flex;gap:4px;align-items:center">กระดาษ
+     <select id="pSize" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
+      <option value="A4">A4</option><option value="A3">A3</option><option value="Letter">Letter</option></select></label>
+    <label style="display:flex;gap:4px;align-items:center">ขอบ
+     <select id="pMargin" onchange="applyPrint()" style="border:none;border-radius:6px;padding:4px 6px;font-family:inherit;font-size:13px">
+      <option value="normal">ปกติ</option><option value="narrow">แคบ</option><option value="none">ไม่มีขอบ</option></select></label>
+    <label style="display:flex;gap:6px;align-items:center">พรีวิว
+     <input id="pZoom" type="range" min="50" max="180" value="100" oninput="applyZoom()" style="vertical-align:middle;width:110px">
+     <span id="pZoomV" style="font-size:12px;min-width:38px">100%</span></label>
+   </div>
+   <span style="display:flex;gap:8px">
+    <button onclick="window.print()" style="background:#c8671a;color:#fff;border:none;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">พิมพ์ / บันทึก PDF</button>
+    <button onclick="window.close()" style="background:#33415c;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:14px;cursor:pointer">ปิด</button>
+   </span>
+  </div>
+  <script>
+  (function(){
+   var sheet=document.querySelector('.sheet');
+   var wmm={A4:{portrait:210,landscape:297},A3:{portrait:297,landscape:420},Letter:{portrait:216,landscape:279}};
+   var oSel=document.getElementById('pOrient');
+   var startLandscape=false;
+   try{var mw=getComputedStyle(sheet).maxWidth;if(mw&&parseFloat(mw)>260)startLandscape=true;}catch(e){}
+   if(oSel)oSel.value=startLandscape?'landscape':'portrait';
+   window.applyPrint=function(){
+    var o=document.getElementById('pOrient').value;var s=document.getElementById('pSize').value;
+    var mSel=document.getElementById('pMargin').value;var mm=(mSel==='none')?'6mm':(mSel==='narrow')?'10mm':((o==='landscape')?'12mm 14mm 14mm 14mm':'18mm 15mm 16mm 18mm');
+    var w=(wmm[s]||wmm.A4)[o];
+    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:'+mm+'}';
+    sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';sheet.style.padding=mm;applyZoom();
+   };
+   window.applyZoom=function(){
+    var z=parseInt(document.getElementById('pZoom').value,10)/100;
+    document.getElementById('uzoom').textContent='@media screen{.sheet{zoom:'+z+'}}';
+    document.getElementById('pZoomV').textContent=Math.round(z*100)+'%';
+   };
+   function autofit(){try{var uz=document.getElementById('uzoom');if(uz)uz.textContent='';
+    var w=sheet.getBoundingClientRect().width;if(!w)return;var avail=window.innerWidth-48;
+    var z=Math.min(1.6,Math.max(0.5,avail/w));var zr=document.getElementById('pZoom');zr.value=Math.round(z*100);applyZoom();}catch(e){}}
+   setTimeout(autofit,80);
+   window.addEventListener('resize',function(){clearTimeout(window._rf);window._rf=setTimeout(autofit,150);});
+  })();
+  <\/script>
+  <div class="sheet">
+  <div class="hd">
+   <h1>ศูนย์สัตว์ทดลอง จุฬาลงกรณ์มหาวิทยาลัย</h1>
+   <h2>รายงานผลการดำเนินงานโครงการ</h2>
+   <p>ประจำปีงบประมาณ ${FY} (1 ตุลาคม ${FY-1} – 30 กันยายน ${FY}) · เฉพาะโครงการที่ได้ดำเนินการแล้ว</p>
+   ${mine?`<p style="font-weight:600">เฉพาะโครงการที่รับผิดชอบโดย ${es(USER)}</p>`:''}
+  </div>
+  <div class="ov">
+   <div class="b"><div class="n">${ps.length}</div><div class="l">โครงการที่ดำเนินการแล้ว</div></div>
+   <div class="b"><div class="n">${tTimes}</div><div class="l">จำนวนครั้งที่จัดรวม</div></div>
+   <div class="b"><div class="n">${tPeople?tPeople.toLocaleString('th-TH'):'—'}</div><div class="l">ผู้เข้าร่วมรวม (คน)</div></div>
+   <div class="b"><div class="n">${mn(tSpent)}</div><div class="l">งบที่ใช้จริงรวม (บาท)</div></div>
+   <div class="b"><div class="n">${closedN}</div><div class="l">ปิดโครงการแล้ว</div></div>
+  </div>
+  ${blocks}
+  <div class="gt"><div class="h">สรุปรวมทั้งปีงบประมาณ</div><div class="b">
+   ดำเนินการแล้ว <b>${ps.length}</b> โครงการ · จัดกิจกรรมรวม <b>${tTimes}</b> ครั้ง · ผู้เข้าร่วมรวม <b>${tPeople?tPeople.toLocaleString('th-TH'):'—'}</b> คน · ใช้งบประมาณจริงรวม <b>${mn(tSpent)}</b> บาท · ปิดโครงการแล้ว <b>${closedN}</b> โครงการ
+  </div></div>
+  ${notYet.length?`<div class="nt"><b>อีก ${notYet.length} โครงการที่อนุมัติแล้วแต่ยังไม่ได้บันทึกผลการจัด</b> — ${es(notYet.map(x=>x.code).join(' · '))}</div>`:''}
+  </div>
+  <\/body><\/html>`);
+ w.document.close();
+ logLocal('พิมพ์รายงานผลการดำเนินงาน',mine?'เฉพาะของ '+USER:'ทุกโครงการ','ปีงบประมาณ '+FY);
+}
+function exportResultCSV(mine){
+ const ps=resultList(mine);
+ if(!ps.length)return toast(mine?'ยังไม่มีโครงการของคุณที่บันทึกผลการจัดในปีงบประมาณนี้':'ยังไม่มีโครงการที่บันทึกผลการจัดในปีงบประมาณนี้');
+ const headers=['รหัสโครงการ','ชื่อโครงการ','หัวหน้าโครงการ','สถานะ','ครั้งที่','วันที่จัด','ผลการดำเนินงาน','ปัญหา/อุปสรรค','ผู้เข้าร่วม (คน)','งบที่ใช้ (บาท)','ผลสัมฤทธิ์ของโครงการ'];
+ const rows=[];
+ ps.forEach(p=>{reps(p).forEach((x,j)=>{
+  rows.push([p.code,p.name,p.owner,(ST[p.status]||{}).t||p.status,j+1,x.date?fd(x.date):'',
+   String(x.result||'').replace(/\n/g,' '),String(x.issue||'').replace(/\n/g,' '),
+   x.participants||'',(+x.spent||0).toFixed(2),j===0?String(p.outcome||'').replace(/\n/g,' '):'']);
+ })});
+ downloadCSV('รายงานผลการดำเนินงานโครงการ'+(mine?'_'+USER:'')+'_'+FY+'.csv',headers,rows);
+ logLocal('ดาวน์โหลด Excel (CSV)','รายงานผลการดำเนินงาน','ปีงบประมาณ '+FY);
+}
+
 function printSummary(){
  const ps=sumSet(),f=($('sumF')&&$('sumF').value)||'all',tot=ps.reduce((a,p)=>a+sumBudget(p),0);
  if(!ps.length)return toast('ไม่มีโครงการให้พิมพ์');
  const ttl=f==='running'?'บัญชีสรุปโครงการที่ได้รับอนุมัติ':f==='all'?'บัญชีสรุปโครงการทั้งหมด':'บัญชีสรุปโครงการเสนอขออนุมัติ';
  const stTag=p=>p.status!=='running'?` <span style="display:inline-block;font-size:8.5px;font-weight:700;background:#eee;color:#444;border-radius:8px;padding:0 6px">${(ST[p.status]||{}).t||p.status}</span>`:'';
-const rows=ps.map((p,i)=>`<tr>
+const rows=ps.map((p,i)=>`<tbody class="g"><tr>
    <td class="c" style="border-bottom:none">${i+1}</td>
    <td style="border-bottom:none"><b>${p.code}</b>${stTag(p)}
     <div style="font-size:11px;font-weight:500">${es(p.name)}</div>
@@ -3775,7 +3987,7 @@ const rows=ps.map((p,i)=>`<tr>
    </td>
    <td style="font-size:11px;text-align:center;border-bottom:none">${p.eventDate?es(p.eventDate):'-'}</td>
    <td class="r" style="border-bottom:none">${mn(sumBudget(p))}</td>
-   <td style="font-size:11px;border-bottom:none">${p.kpi==='NA'?'<span style="color:#999">ยังไม่ระบุ</span>':`<b>${p.kpi}</b> ${es(KPIS[p.kpi]||'')}`}</td>
+   <td style="font-size:11px;border-bottom:none">${p.kpi==='NA'?'<span style="color:#000">ยังไม่ระบุ</span>':`<b>${p.kpi}</b> ${es(KPIS[p.kpi]||'')}`}</td>
   </tr>
   <tr><td style="border-top:none"></td><td colspan="4" style="background:#faf8f5;padding:6px 8px;border-top:none">
    <table style="width:100%;border:none;margin:0"><tr>
@@ -3783,16 +3995,20 @@ const rows=ps.map((p,i)=>`<tr>
     <td style="width:33%;border:none;padding:0 6px;vertical-align:top"><div style="font-size:9px;font-weight:700;color:#a8531a">ประโยชน์ที่ได้รับ</div><div style="font-size:10.5px">${p.benefit?nl(es(p.benefit)):'-'}</div></td>
     <td style="width:34%;border:none;padding:0 0 0 6px;vertical-align:top"><div style="font-size:9px;font-weight:700;color:#a8531a">ตัวชี้วัดความสำเร็จของโครงการ</div><div style="font-size:10.5px">${p.target?nl(es(p.target)):'-'}</div></td>
    </tr></table>
-  </td></tr>`).join('');
+  </td></tr></tbody>`).join('');
  const w=window.open('','_blank');
  w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
   <title>${ttl} ปีงบประมาณ ${FY}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-  @page{size:A4 landscape;margin:0}
+  @page{size:A4 landscape;margin:12mm 14mm 14mm 14mm}
+  /* มาตรฐานการพิมพ์: หัวตารางซ้ำทุกหน้า · แถวไม่ถูกตัดกลางหน้า · แถวรวมพิมพ์ครั้งเดียวท้ายตาราง */
+  thead{display:table-header-group}
+  tfoot{display:table-row-group}
+  tr{page-break-inside:avoid;break-inside:avoid}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Sarabun',sans-serif;color:#1a1a1a;font-size:10.5px;line-height:1.3;background:#e2e2e2;padding:16px 0 60px}
-  .sheet{max-width:297mm;margin:0 auto;background:#fff;padding:8mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+  .sheet{max-width:297mm;margin:0 auto;background:#fff;padding:12mm 14mm 14mm 14mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
   .hd{text-align:center;margin-bottom:6px}
   .hd h1{font-size:14px;font-weight:700}.hd h2{font-size:12px;font-weight:600;margin-top:2px}
   .hd p{font-size:10px;color:#444;margin-top:1px}
@@ -3801,7 +4017,8 @@ const rows=ps.map((p,i)=>`<tr>
   th{background:#eee;text-align:center;font-weight:600;font-size:9px}
   td.c{text-align:center;white-space:nowrap}td.r{text-align:right;white-space:nowrap}
   tfoot td{font-weight:700;background:#f6f6f6}
-  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;margin:0;box-shadow:none}}
+  tbody.g{page-break-inside:avoid;break-inside:avoid}
+  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;width:auto;margin:0;box-shadow:none;padding:0!important}}
   </style></head><body>
   <style id="upage"></style>
   <style id="uzoom" media="screen"></style>
@@ -3840,9 +4057,9 @@ const rows=ps.map((p,i)=>`<tr>
     var o=document.getElementById('pOrient').value;
     var s=document.getElementById('pSize').value;
     var mSel=document.getElementById('pMargin').value;
-    var mm=(mSel==='none')?'0mm':(mSel==='narrow')?'8mm':'15mm';
+    var mm=(mSel==='none')?'6mm':(mSel==='narrow')?'10mm':((o==='landscape')?'12mm 14mm 14mm 14mm':'18mm 15mm 16mm 18mm');
     var w=(wmm[s]||wmm.A4)[o];
-    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:0}';
+    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:'+mm+'}';
     sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';
     sheet.style.padding=mm;
     applyZoom();
@@ -3881,7 +4098,7 @@ const rows=ps.map((p,i)=>`<tr>
      <th style="width:36%">ตัวชี้วัด (SDA) ของศูนย์ฯที่โครงการนี้สนับสนุน</th>
     </tr>
    </thead>
-   <tbody>${rows}</tbody>
+   ${rows}
    <tfoot>
     <tr>
      <td colspan="3" class="r">รวม ${ps.length} โครงการ</td>
@@ -3926,11 +4143,11 @@ function printMeetingReport(){
    return `<tr>
     <td class="c">${i+1}</td>
     <td>${p.status==='closed'?'<span class="tag done">ปิดแล้ว</span> ':''}<b>${p.code}</b> · ${es(p.name)}<div style="font-size:10px;color:#000">หัวหน้าโครงการ: ${es(p.owner)}${(p.team&&[].concat(p.team).filter(Boolean).length)?' · ผู้ร่วม: '+es([].concat(p.team).filter(Boolean).join(', ')):''}</div></td>
-    <td style="font-size:11px">${p.kpi==='NA'?'<span style="color:#999">ยังไม่ระบุ</span>':`<b>${p.kpi}</b> ${es(KPIS[p.kpi]||'')}`}</td>
+    <td style="font-size:11px">${p.kpi==='NA'?'<span style="color:#000">ยังไม่ระบุ</span>':`<b>${p.kpi}</b> ${es(KPIS[p.kpi]||'')}`}</td>
     <td class="r">${mn(b)}</td>
    </tr>`;
   }).join('');
-  return `<tr class="kg"><td colspan="4">${es(key)} · วันที่ ${fd(g.date)} <span style="font-weight:400;color:#555">(${g.items.length} โครงการ)</span></td></tr>
+  return `<tr class="kg"><td colspan="4">${es(key)} · วันที่ ${fd(g.date)} <span style="font-weight:400;color:#000">(${g.items.length} โครงการ)</span></td></tr>
    ${rows}
    <tr class="sub"><td colspan="3" class="r">รวมการประชุมนี้</td><td class="r">${mn(subBudget)}</td></tr>`;
  }).join('');
@@ -3939,16 +4156,20 @@ function printMeetingReport(){
   <title>รายงานสรุปมติที่ประชุมอนุมัติโครงการ</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-  @page{size:A4 portrait;margin:0}
+  @page{size:A4 portrait;margin:18mm 15mm 16mm 18mm}
+  /* มาตรฐานการพิมพ์: หัวตารางซ้ำทุกหน้า · แถวไม่ถูกตัดกลางหน้า · แถวรวมพิมพ์ครั้งเดียวท้ายตาราง */
+  thead{display:table-header-group}
+  tfoot{display:table-row-group}
+  tr{page-break-inside:avoid;break-inside:avoid}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Sarabun',sans-serif;color:#1a1a1a;font-size:11px;line-height:1.35;background:#e2e2e2;padding:16px 0 60px}
-  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:14mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:18mm 15mm 16mm 18mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
   .hd{text-align:center;border-bottom:2px solid #c8671a;padding-bottom:8px;margin-bottom:10px}
   .hd h1{font-size:16px;font-weight:700;color:#14233f}.hd h2{font-size:14px;font-weight:600;margin-top:2px;color:#a8531a}
   .hd p{font-size:11px;color:#444;margin-top:2px}
   .ov{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 16px}
   .ov .b{border:1px solid #ddd;border-radius:9px;padding:10px 6px;text-align:center}
-  .ov .b .n{font-size:18px;font-weight:800;color:#14233f;white-space:nowrap}.ov .b .l{font-size:10px;color:#666;margin-top:2px}
+  .ov .b .n{font-size:18px;font-weight:800;color:#14233f;white-space:nowrap}.ov .b .l{font-size:10px;color:#000;margin-top:2px}
   table{width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed}
   th,td{border:1px solid #444;padding:4px 6px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}
   th{background:#14233f;color:#fff;text-align:center;font-weight:600;font-size:10px}
@@ -3957,7 +4178,7 @@ function printMeetingReport(){
   tr.sub td{background:#f6f6f6;font-weight:700}
   .tag.done{display:inline-block;background:#eef0f2;color:#3a4657;border-radius:5px;padding:0 6px;font-size:9px;font-weight:700}
   tfoot td{background:#eef0f2;font-weight:800;border-top:2px solid #14233f}
-  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;margin:0;box-shadow:none}}
+  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;width:auto;margin:0;box-shadow:none;padding:0!important}}
   </style></head><body>
   <style id="upage"></style>
   <style id="uzoom" media="screen"></style>
@@ -3992,9 +4213,9 @@ function printMeetingReport(){
    if(oSel)oSel.value=startLandscape?'landscape':'portrait';
    window.applyPrint=function(){
     var o=document.getElementById('pOrient').value;var s=document.getElementById('pSize').value;
-    var mSel=document.getElementById('pMargin').value;var mm=(mSel==='none')?'0mm':(mSel==='narrow')?'8mm':'15mm';
+    var mSel=document.getElementById('pMargin').value;var mm=(mSel==='none')?'6mm':(mSel==='narrow')?'10mm':((o==='landscape')?'12mm 14mm 14mm 14mm':'18mm 15mm 16mm 18mm');
     var w=(wmm[s]||wmm.A4)[o];
-    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:0}';
+    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:'+mm+'}';
     sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';sheet.style.padding=mm;applyZoom();
    };
    window.applyZoom=function(){
@@ -4056,29 +4277,33 @@ function printPendingSummary(){
    </td>
    <td style="font-size:11px;text-align:center">${p.eventDate?es(p.eventDate):'-'}</td>
    <td class="r">${mn(p.budgetRequested)}</td>
-   <td style="font-size:11px">${p.kpi==='NA'?'<span style="color:#999">ยังไม่ระบุ</span>':`<b>${p.kpi}</b> ${es(KPIS[p.kpi]||'')}`}</td>
+   <td style="font-size:11px">${p.kpi==='NA'?'<span style="color:#000">ยังไม่ระบุ</span>':`<b>${p.kpi}</b> ${es(KPIS[p.kpi]||'')}`}</td>
   </tr>`).join('');
  const w=window.open('','_blank');
  w.document.write(`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8">
   <title>รายงานสรุปโครงการที่เสนออนุมัติ</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-  @page{size:A4 landscape;margin:0}
+  @page{size:A4 landscape;margin:12mm 14mm 14mm 14mm}
+  /* มาตรฐานการพิมพ์: หัวตารางซ้ำทุกหน้า · แถวไม่ถูกตัดกลางหน้า · แถวรวมพิมพ์ครั้งเดียวท้ายตาราง */
+  thead{display:table-header-group}
+  tfoot{display:table-row-group}
+  tr{page-break-inside:avoid;break-inside:avoid}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Sarabun',sans-serif;color:#1a1a1a;font-size:10.5px;line-height:1.3;background:#e2e2e2;padding:16px 0 60px}
-  .sheet{max-width:297mm;margin:0 auto;background:#fff;padding:8mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+  .sheet{max-width:297mm;margin:0 auto;background:#fff;padding:12mm 14mm 14mm 14mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
   .hd{text-align:center;margin-bottom:6px}
   .hd h1{font-size:14px;font-weight:700}.hd h2{font-size:12.5px;font-weight:600;margin-top:2px;color:#a8531a}
   .hd p{font-size:10.5px;color:#444;margin-top:2px}
-  .ov{display:flex;gap:10px;margin:10px 0 12px}
+  .ov{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:10px;margin:10px 0 14px}
   .ov .b{border:1px solid #ddd;border-radius:9px;padding:9px 16px;text-align:center}
-  .ov .b .n{font-size:18px;font-weight:800;color:#14233f;white-space:nowrap}.ov .b .l{font-size:10px;color:#666;margin-top:2px}
+  .ov .b .n{font-size:18px;font-weight:800;color:#14233f;white-space:nowrap}.ov .b .l{font-size:10px;color:#000;margin-top:2px}
   table{width:100%;border-collapse:collapse;margin-top:4px;font-size:10.5px;table-layout:fixed}
   th,td{border:1px solid #333;padding:5px 6px;vertical-align:top;overflow-wrap:anywhere;word-break:break-word}
   th{background:#14233f;color:#fff;font-weight:600;text-align:center;font-size:10px}
   td.c{text-align:center}td.r{text-align:right;white-space:nowrap}
   tfoot td{background:#f6f6f6;font-weight:800;border-top:2px solid #14233f}
-  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;margin:0;box-shadow:none}}
+  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;width:auto;margin:0;box-shadow:none;padding:0!important}}
   </style></head><body>
   <style id="upage"></style>
   <style id="uzoom" media="screen"></style>
@@ -4116,9 +4341,9 @@ function printPendingSummary(){
    if(oSel)oSel.value=startLandscape?'landscape':'portrait';
    window.applyPrint=function(){
     var o=document.getElementById('pOrient').value;var s=document.getElementById('pSize').value;
-    var mSel=document.getElementById('pMargin').value;var mm=(mSel==='none')?'0mm':(mSel==='narrow')?'8mm':'15mm';
+    var mSel=document.getElementById('pMargin').value;var mm=(mSel==='none')?'6mm':(mSel==='narrow')?'10mm':((o==='landscape')?'12mm 14mm 14mm 14mm':'18mm 15mm 16mm 18mm');
     var w=(wmm[s]||wmm.A4)[o];
-    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:0}';
+    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:'+mm+'}';
     sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';sheet.style.padding=mm;applyZoom();
    };
    window.applyZoom=function(){
@@ -4199,7 +4424,7 @@ function printYearReport(){
  const sdaGroups=kOrder.map(k=>{
   const list=byK[k];let gB=0,gU=0;
   const rows=list.map((p,i)=>{const r=rowHtml(p,i);gB+=r.b;gU+=r.u;return r.row}).join('');
-  return `<tr class="kg"><td colspan="7"><span class="kc">${k}</span> ${es(KPIS[k]||'')} <span style="font-weight:400;color:#555">(${list.length} โครงการ)</span></td></tr>
+  return `<tr class="kg"><td colspan="7"><span class="kc">${k}</span> ${es(KPIS[k]||'')} <span style="font-weight:400;color:#000">(${list.length} โครงการ)</span></td></tr>
    ${rows}${subtotalRow(gB,gU)}`;
  }).join('');
  let sdaGB=0,sdaGU=0;sdaList.forEach(p=>{sdaGB+=sumBudget(p)||0;sdaGU+=spent(p);});
@@ -4212,16 +4437,20 @@ function printYearReport(){
   <title>รายงานสรุปปิดปีงบประมาณ ${FY}</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-  @page{size:A4 portrait;margin:0}
+  @page{size:A4 portrait;margin:18mm 15mm 16mm 18mm}
+  /* มาตรฐานการพิมพ์: หัวตารางซ้ำทุกหน้า · แถวไม่ถูกตัดกลางหน้า · แถวรวมพิมพ์ครั้งเดียวท้ายตาราง */
+  thead{display:table-header-group}
+  tfoot{display:table-row-group}
+  tr{page-break-inside:avoid;break-inside:avoid}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Sarabun',sans-serif;color:#1a1a1a;font-size:11px;line-height:1.35;background:#e2e2e2;padding:16px 0 60px}
-  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:14mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
+  .sheet{max-width:210mm;margin:0 auto;background:#fff;padding:18mm 15mm 16mm 18mm;box-shadow:0 2px 16px rgba(0,0,0,.2)}
   .hd{text-align:center;border-bottom:2px solid #c8671a;padding-bottom:8px;margin-bottom:10px}
   .hd h1{font-size:16px;font-weight:700;color:#14233f}.hd h2{font-size:14px;font-weight:600;margin-top:2px;color:#a8531a}
   .hd p{font-size:11px;color:#444;margin-top:2px}
   .ov{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0 16px}
   .ov .b{border:1px solid #ddd;border-radius:9px;padding:10px 6px;text-align:center}
-  .ov .b .n{font-size:18px;font-weight:800;color:#14233f;white-space:nowrap}.ov .b .l{font-size:10px;color:#666;margin-top:2px}
+  .ov .b .n{font-size:18px;font-weight:800;color:#14233f;white-space:nowrap}.ov .b .l{font-size:10px;color:#000;margin-top:2px}
   .sec-h{font-size:13px;font-weight:800;color:#fff;background:#14233f;padding:7px 12px;border-radius:7px;margin:16px 0 6px}
   .sec-h.org{background:#3a6b52}
   .sec-h span{font-weight:400;font-size:11px;color:#dbe3ef;margin-left:6px}
@@ -4235,8 +4464,8 @@ function printYearReport(){
   .tag.done{display:inline-block;background:#eef0f2;color:#3a4657;border-radius:5px;padding:0 6px;font-size:9px;font-weight:700}
   .tag.pend{display:inline-block;background:#fbf1e8;color:#a8531a;border-radius:5px;padding:0 6px;font-size:9px;font-weight:700}
   tfoot td{background:#eef0f2;font-weight:800;border-top:2px solid #14233f}
-  .empty-note{font-size:11px;color:#888;text-align:center;padding:14px;border:1px dashed #ccc;border-radius:8px;margin-top:6px}
-  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;margin:0;box-shadow:none}}
+  .empty-note{font-size:11px;color:#000;text-align:center;padding:14px;border:1px dashed #999;border-radius:8px;margin-top:6px}
+  @media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.noprint{display:none!important}body{background:#fff;padding:0}.sheet{max-width:none;width:auto;margin:0;box-shadow:none;padding:0!important}}
   </style></head><body>
   <style id="upage"></style>
   <style id="uzoom" media="screen"></style>
@@ -4271,9 +4500,9 @@ function printYearReport(){
    if(oSel)oSel.value=startLandscape?'landscape':'portrait';
    window.applyPrint=function(){
     var o=document.getElementById('pOrient').value;var s=document.getElementById('pSize').value;
-    var mSel=document.getElementById('pMargin').value;var mm=(mSel==='none')?'0mm':(mSel==='narrow')?'8mm':'15mm';
+    var mSel=document.getElementById('pMargin').value;var mm=(mSel==='none')?'6mm':(mSel==='narrow')?'10mm':((o==='landscape')?'12mm 14mm 14mm 14mm':'18mm 15mm 16mm 18mm');
     var w=(wmm[s]||wmm.A4)[o];
-    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:0}';
+    document.getElementById('upage').textContent='@page{size:'+s+' '+o+';margin:'+mm+'}';
     sheet.style.maxWidth=w+'mm';sheet.style.width=w+'mm';sheet.style.padding=mm;applyZoom();
    };
    window.applyZoom=function(){
@@ -4547,13 +4776,17 @@ function openP(i){
  h+=`<div class="card"><h3>ข้อมูลโครงการ</h3><dl class="kv" style="margin-top:14px">
   <dt>สถานะ</dt><dd><span class="b ${ST[p.status].c}">${ST[p.status].t}</span> &nbsp;<span class="dt ${l.c}"></span>${l.t}</dd>
   <dt>ผู้รับผิดชอบหลัก</dt><dd>${es(p.owner)}</dd>
+  ${p.ownerTitle?`<dt>ตำแหน่ง</dt><dd style="font-weight:400">${es(p.ownerTitle)}</dd>`:''}
+  ${p.projType?`<dt>ลักษณะโครงการ</dt><dd style="font-weight:400">${es(p.projType)}</dd>`:''}
   ${p.team&&p.team.length?`<dt>คณะทำงาน</dt><dd style="font-weight:400">${es([].concat(p.team).join(', '))}</dd>`:''}
   <dt>ตัวชี้วัด (SDA)</dt><dd>${ROLE==='sec'?`<select onchange="setKpi('${p.id}',this.value)" style="border:1px solid var(--line2);border-radius:7px;padding:5px 9px;background:#fff;font-weight:400">${Object.entries(KPIS).map(([k,v])=>`<option value="${k}" ${p.kpi===k?'selected':''}>${k==='NA'?'ยังไม่ระบุ':k+' — '+v.slice(0,34)}</option>`).join('')}</select>`:`<span class="kpi">${p.kpi==='NA'?'ยังไม่ระบุ':p.kpi}</span> ${es(KPIS[p.kpi||'NA'])}`}</dd>
   <dt>กำหนดวันจัดโครงการ</dt><dd style="font-weight:400">${p.eventDate?es(p.eventDate):'<span style="color:var(--ink3)">ยังไม่ระบุ</span>'}</dd>
+  ${(p.startDate||p.endDate)?`<dt>ระยะเวลาดำเนินการ</dt><dd style="font-weight:400">${p.startDate?fd(p.startDate):'—'} ถึง ${p.endDate?fd(p.endDate):'—'}</dd>`:''}
   <dt>จำนวนครั้งที่จัด</dt><dd style="font-weight:400">${p.times||1} ครั้ง · จัดแล้ว ${timesDone(p)} ครั้ง</dd>
   ${p.location?`<dt>สถานที่จัด</dt><dd style="font-weight:400">${es(p.location)}</dd>`:''}
   ${p.participants?`<dt>ผู้เข้าร่วม</dt><dd style="font-weight:400">${es(p.participants)}</dd>`:''}
   <dt>งบที่ขอ</dt><dd>${mn(p.budgetRequested)} บาท</dd>
+  ${p.fundSource?`<dt>แหล่งงบประมาณ</dt><dd style="font-weight:400">${es(p.fundSource)}</dd>`:''}
   <dt>งบที่อนุมัติ</dt><dd>${p.budgetApproved!=null?mn(p.budgetApproved)+' บาท':'—'}${p.meetingRef?' · '+es(p.meetingRef):''}</dd>
   ${(p.status==='running'||p.status==='closed')&&p.approvedAt?`<dt>วันที่อนุมัติ (คก.บริหาร)</dt><dd style="font-weight:400">${fd(p.approvedAt)}${p.meetingRef?' · '+es(p.meetingRef):''}</dd>`:''}
   <dt>ใช้จ่ายสะสม</dt><dd>${mn(s)} บาท${b?` (คงเหลือ ${mn(b-s)} บาท)`:''}</dd>
@@ -4564,8 +4797,12 @@ function openP(i){
   ${p.benefit?`<dt>ประโยชน์ที่คาดว่าจะได้รับ</dt><dd style="font-weight:400">${nl(p.benefit)}</dd>`:''}
  </dl></div>`;
 
- h+=`<div class="card"><h3>เอกสารโครงการ</h3><div class="sb">พิมพ์เป็นเอกสารโครงการมาตรฐาน (ตรวจทานก่อนสั่งพิมพ์ · บันทึกเป็น PDF ได้)</div>
-  <div style="margin-top:10px"><button class="btn a" onclick="printProjectDoc('${p.id}')">พิมพ์เอกสารโครงการ (PDF)</button></div></div>`;
+ if(gtHasData(p.gantt))h+=`<div class="card"><h3>ขั้นตอนการดำเนินงาน</h3><div style="margin-top:12px">${gtTable(p.gantt,false)}</div></div>`;
+ if(bHasData(p.budget))h+=`<div class="card"><h3>งบประมาณรายรับ–รายจ่าย แยกหมวด</h3><div style="margin-top:12px">${bTable(p.budget,false)}</div>${(p.budget.note&&String(p.budget.note).trim())?`<div style="margin-top:12px;font-size:13px">${nl(p.budget.note)}</div>`:''}<div style="margin-top:12px"><button class="btn g s" onclick="exportBudgetCSV('${p.id}')">⬇ ดาวน์โหลด Excel (CSV)</button></div></div>`;
+
+ h+=`<div class="card"><h3>เอกสารโครงการ</h3><div class="sb">เอกสารทางการของโครงการนี้มีฉบับเดียว — <b>แบบข้อเสนอขอโครงการ</b> (ตรวจทานก่อนสั่งพิมพ์ · บันทึกเป็น PDF ได้)</div>
+  <div style="margin-top:10px"><button class="btn a" onclick="printProposalForm('${p.id}')">พิมพ์แบบข้อเสนอขอโครงการ (PDF)</button></div>
+  <div class="sb" style="margin-top:8px">พิมพ์เฉพาะหัวข้อที่กรอกไว้ แล้วไล่เลขให้ติดกัน พร้อมตารางขั้นตอนการดำเนินงานและตารางงบประมาณรายหมวด (ถ้ากรอกไว้) · เมื่อโครงการได้รับอนุมัติแล้ว จะต่อท้ายด้วย<b>ผลการดำเนินงาน</b>ให้เองในฉบับเดียวกัน</div></div>`;
 
  const rm=regMetrics(p),ra=reps(p);
  h+=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
@@ -4605,6 +4842,209 @@ function closeDW(){$('dw').classList.remove('on');$('mask').classList.remove('on
 function setKpi(i,k){const p=gid(i);const o=p.kpi;p.kpi=k;hist(p,'ปรับตัวชี้วัด (SDA)',`${o==='NA'?'ยังไม่ระบุ':o} → ${k==='NA'?'ยังไม่ระบุ':k}`);log('ปรับตัวชี้วัด (SDA)',p.code,k);save();paint();toast('บันทึกตัวชี้วัด (SDA) แล้ว')}
 function hist(p,h,m){p.history=p.history||[];p.history.push({ts:new Date().toISOString(),by:USER,h,m})}
 
+/* ======================================================================
+   ส่วนขยายตามแบบข้อเสนอขอโครงการ (ฉบับทางการของศูนย์ฯ)
+   · ขั้นตอนการดำเนินงาน (Gantt)   เก็บที่ p.gantt
+   · งบประมาณรายรับ–รายจ่ายรายหมวด เก็บที่ p.budget
+   ทุกส่วนเป็น "ไม่บังคับ" — โครงการที่เสนอไปแล้วไม่ต้องเข้าไปเติมก็ใช้งานได้ปกติ
+   ====================================================================== */
+
+/* ---------- กล่องพับเก็บได้ ---------- */
+function bxT(h){
+ const b=h.nextElementSibling;if(!b)return;
+ const on=b.style.display==='none';
+ b.style.display=on?'block':'none';
+ const c=h.querySelector('.bxc');if(c)c.textContent=on?'▴ ย่อเก็บ':'▾ กางออก';
+}
+
+/* ---------- ขั้นตอนการดำเนินงาน (Gantt) ---------- */
+let GT=null;
+const gtDefault=()=>({period:{m:9,y:(FY-1)%100,n:12},rows:[{act:'',m:[]}]});
+const gtN=()=>Math.max(1,Math.min(24,(GT&&GT.period&&+GT.period.n)||12));
+function gtLabels(m,y,n){const o=[];for(let j=0;j<n;j++){const mm=((+m)+j)%12,yy=(+y)+Math.floor(((+m)+j)/12);o.push(TH[mm]+' '+String(yy%100).padStart(2,'0'));}return o;}
+function gtFix(){
+ GT.period=GT.period||{m:9,y:(FY-1)%100,n:12};
+ if(GT.period.m==null)GT.period.m=9;
+ if(GT.period.y==null)GT.period.y=(FY-1)%100;
+ const n=gtN();GT.period.n=n;
+ GT.rows=(Array.isArray(GT.rows)&&GT.rows.length)?GT.rows:[{act:'',m:[]}];
+ GT.rows.forEach(r=>{r.m=Array.isArray(r.m)?r.m:[];const o=r.m.slice();r.m=[];for(let i=0;i<n;i++)r.m[i]=!!o[i];});
+ GT.months=gtLabels(GT.period.m,GT.period.y,n);
+}
+function gtInit(p){GT=(p&&p.gantt&&Array.isArray(p.gantt.rows))?JSON.parse(JSON.stringify(p.gantt)):gtDefault();gtFix();}
+function gtSet(i,v){if(GT&&GT.rows[i])GT.rows[i].act=v;}
+function gtToggle(i,j){if(!GT||!GT.rows[i])return;GT.rows[i].m[j]=!GT.rows[i].m[j];gtPaint();}
+function gtAdd(){GT.rows.push({act:'',m:[]});gtFix();gtPaint();}
+function gtDel(i){if(GT.rows.length<=1)GT.rows=[{act:'',m:[]}];else GT.rows.splice(i,1);gtFix();gtPaint();}
+function gtPeriod(){
+ if(!$('gtM'))return;
+ GT.period={m:+$('gtM').value,y:+$('gtY').value,n:+$('gtN').value};
+ gtFix();gtPaint();
+}
+function gtHasData(g){return !!(g&&Array.isArray(g.rows)&&g.rows.some(r=>String(r.act||'').trim()||(Array.isArray(r.m)&&r.m.some(Boolean))));}
+function gtClean(){
+ if(!GT)return null;
+ const n=gtN();
+ const rows=GT.rows.filter(r=>String(r.act||'').trim()||r.m.some(Boolean))
+  .map(r=>({act:String(r.act||'').trim(),m:r.m.slice(0,n).map(Boolean)}));
+ if(!rows.length)return null;
+ return {period:{m:+GT.period.m,y:+GT.period.y,n:n},months:GT.months.slice(),rows};
+}
+/* ตาราง Gantt — ed=true แก้ไขได้ (ในฟอร์ม) · ed=false อ่านอย่างเดียว (หน้ารายละเอียด/พิมพ์) */
+function gtTable(g,ed){
+ if(!g||!Array.isArray(g.rows))return '<div class="hint">ยังไม่ได้ระบุขั้นตอนการดำเนินงาน</div>';
+ const L=(g.months&&g.months.length)?g.months:gtLabels(g.period.m,g.period.y,(g.period.n||12));
+ const n=L.length;
+ let h='';
+ if(ed)h+=`<div class="gr g3" style="margin-bottom:10px">
+  <div class="f" style="margin:0"><label>เดือนเริ่ม</label><select id="gtM" onchange="gtPeriod()">${TH.map((m,i)=>`<option value="${i}" ${+g.period.m===i?'selected':''}>${m}</option>`).join('')}</select></div>
+  <div class="f" style="margin:0"><label>ปี พ.ศ. (2 หลัก)</label><input type="number" id="gtY" min="0" max="99" value="${+g.period.y}" onchange="gtPeriod()"></div>
+  <div class="f" style="margin:0"><label>จำนวนเดือน</label><input type="number" id="gtN" min="1" max="24" value="${n}" onchange="gtPeriod()"></div></div>`;
+ h+=`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="gt"><thead><tr><th class="a">ขั้นตอน / กิจกรรม</th>${L.map(x=>`<th>${es(x).replace(/\s+/,'<br>')}</th>`).join('')}</tr></thead><tbody>`;
+ g.rows.forEach((r,i)=>{
+  h+=`<tr><td class="a">${ed?`<div style="display:flex;align-items:center;gap:5px"><b style="cursor:pointer;color:var(--bad);flex:0 0 auto" title="ลบขั้นตอนนี้" onclick="gtDel(${i})">×</b><input class="ga" value="${es(r.act)}" placeholder="เช่น ประชุมคณะทำงาน / จัดกิจกรรม" oninput="gtSet(${i},this.value)"></div>`:(es(r.act)||'—')}</td>`;
+  for(let j=0;j<n;j++)h+=`<td class="m${(r.m&&r.m[j])?' on':''}"${ed?` onclick="gtToggle(${i},${j})"`:''}></td>`;
+  h+='</tr>';
+ });
+ h+='</tbody></table></div>';
+ if(ed)h+=`<div style="margin-top:9px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn g s" onclick="gtAdd()">＋ เพิ่มขั้นตอน</button><span style="font-size:12.5px;color:var(--ink2)">พิมพ์ชื่อขั้นตอน แล้ว<b>คลิกช่องเดือน</b>เพื่อระบายสีช่วงเวลาที่ทำกิจกรรมนั้น (คลิกอีกครั้งเพื่อลบสี)</span></div>`;
+ return h;
+}
+function gtPaint(){const b=$('gtBox');if(b){gtFix();b.innerHTML=gtTable(GT,true);}}
+
+/* ---------- งบประมาณรายรับ–รายจ่ายรายหมวด ---------- */
+const BCATS=[['comp','1. หมวดค่าตอบแทนคณะกรรมการ/ผู้ดำเนินโครงการ'],['oper','2. หมวดค่าใช้สอย'],['mat','3. หมวดค่าวัสดุ'],['util','4. หมวดค่าสาธารณูปโภค (5%)'],['sub','5. หมวดเงินอุดหนุนพัฒนาวิชาการศูนย์ฯ (10%)'],['res','6. เงินสำรองทั่วไป (5%)'],['cap','7. หมวดงบลงทุน (ถ้ามี)']];
+const BAUTO={util:0.05,sub:0.10,res:0.05};
+const BAUTO_LB={util:'ค่าสาธารณูปโภค 5%',sub:'เงินอุดหนุนพัฒนาวิชาการศูนย์ฯ 10%',res:'เงินสำรองทั่วไป 5%'};
+const BNOTE='1. ขออนุมัติถัวจ่ายภายในหมวดค่าตอบแทน ค่าใช้สอย ค่าวัสดุ และเงินสำรองทั่วไป\n2. หากเสร็จสิ้นโครงการแล้ว มีรายรับเหนือรายจ่าย จะนำส่งเป็นเงินรายได้ของส่วนงานภายใน 30 วัน หลังจากสิ้นสุดโครงการ';
+let B=null;
+const bNum=v=>parseFloat(String(v==null?'':v).replace(/[^0-9.\-]/g,''))||0;
+function bDefault(){const c={};BCATS.forEach(x=>{c[x[0]]=[{label:BAUTO_LB[x[0]]||'',amount:0}]});return {rev:[{label:'',amount:0}],cats:c,auto:true,note:BNOTE};}
+function bInit(p){
+ B=(p&&p.budget)?JSON.parse(JSON.stringify(p.budget)):bDefault();
+ B.rev=(Array.isArray(B.rev)&&B.rev.length)?B.rev:[{label:'',amount:0}];
+ B.cats=B.cats||{};
+ BCATS.forEach(x=>{const k=x[0];if(!Array.isArray(B.cats[k])||!B.cats[k].length)B.cats[k]=[{label:BAUTO_LB[k]||'',amount:0}];});
+ if(B.auto===undefined)B.auto=true;
+ if(B.note==null)B.note=BNOTE;
+}
+function bApplyAuto(){
+ const rev=B.rev.reduce((t,r)=>t+bNum(r.amount),0);
+ if(B.auto)Object.keys(BAUTO).forEach(k=>{
+  if(!B.cats[k]||!B.cats[k].length)B.cats[k]=[{label:BAUTO_LB[k],amount:0}];
+  B.cats[k][0].amount=Math.round(rev*BAUTO[k]*100)/100;
+  if(!String(B.cats[k][0].label||'').trim())B.cats[k][0].label=BAUTO_LB[k];
+ });
+ return rev;
+}
+function bTotals(){const rev=bApplyAuto();let exp=0;const sub={};BCATS.forEach(x=>{const t=B.cats[x[0]].reduce((a,r)=>a+bNum(r.amount),0);sub[x[0]]=t;exp+=t;});return {rev,exp,sub};}
+function bSet(sec,i,f,v){const a=(sec==='rev')?B.rev:B.cats[sec];if(!a||!a[i])return;a[i][f]=(f==='amount')?bNum(v):v;}
+function bAdd(sec){const a=(sec==='rev')?B.rev:B.cats[sec];a.push({label:'',amount:0});bPaint();}
+function bDel(sec,i){const a=(sec==='rev')?B.rev:B.cats[sec];if(a.length<=1)a[0]={label:(sec!=='rev'&&BAUTO_LB[sec])||'',amount:0};else a.splice(i,1);bPaint();}
+function bAutoTgl(on){B.auto=!!on;bPaint();}
+function bNoteSet(v){B.note=v;}
+/* "มีข้อมูลงบประมาณจริงหรือยัง" — หมวดที่ระบบเติมชื่อให้อัตโนมัติ (4-6) ต้องมีจำนวนเงินจึงจะนับ
+   ไม่เช่นนั้นโครงการเดิมที่เจ้าของไม่ได้แตะตารางนี้เลย จะถูกบันทึกตารางเปล่าติดไปด้วย */
+function bHasData(b){
+ if(!b)return false;
+ const amt=a=>Array.isArray(a)&&a.some(r=>bNum(r.amount)>0);
+ const lbl=a=>Array.isArray(a)&&a.some(r=>String(r.label||'').trim());
+ const cs=b.cats||{};
+ if(amt(b.rev)||lbl(b.rev))return true;
+ return BCATS.some(x=>{const k=x[0];return (BAUTO[k]!==undefined)?amt(cs[k]):(amt(cs[k])||lbl(cs[k]));});
+}
+function bClean(){
+ if(!B)return null;
+ bApplyAuto();
+ if(!bHasData(B))return null;
+ const keep=a=>(a||[]).filter(r=>String(r.label||'').trim()||bNum(r.amount)).map(r=>({label:String(r.label||'').trim(),amount:bNum(r.amount)}));
+ const c={};BCATS.forEach(x=>{c[x[0]]=keep(B.cats[x[0]])});
+ return {rev:keep(B.rev),cats:c,auto:!!B.auto,note:String(B.note||'')};
+}
+/* อัปเดตเฉพาะยอดรวม (ไม่ re-render ทั้งตาราง เพื่อไม่ให้เคอร์เซอร์หลุดระหว่างพิมพ์) */
+function bSync(){
+ const t=bTotals();
+ Object.keys(BAUTO).forEach(k=>{const el=$('bAuto_'+k);if(el)el.value=B.cats[k][0].amount?mn(B.cats[k][0].amount):'';});
+ BCATS.forEach(x=>{const el=$('bSub_'+x[0]);if(el)el.textContent=mn(t.sub[x[0]]);});
+ const a=$('bTotRev'),b=$('bTotExp'),c=$('bTotNet');
+ if(a)a.textContent=mn(t.rev);
+ if(b)b.textContent=mn(t.exp);
+ if(c)c.textContent=mn(t.rev-t.exp);
+ const fb=$('fb'),hn=$('fbHint');
+ if(fb&&!fb.disabled&&t.exp>0){
+  fb.value=t.exp;
+  if(hn)hn.innerHTML='<b style="color:var(--ok)">คำนวณจากตารางงบประมาณรายหมวดให้แล้ว</b> — รวมรายจ่าย '+mn(t.exp)+' บาท';
+ }
+}
+/* ตารางงบประมาณ — ed=true แก้ไขได้ · ed=false อ่านอย่างเดียว */
+function bTable(bd,ed){
+ if(!bd)return '<div class="hint">ยังไม่ได้ระบุงบประมาณรายหมวด</div>';
+ const cats=bd.cats||{};
+ const sum=a=>(a||[]).reduce((t,r)=>t+bNum(r.amount),0);
+ let rev=sum(bd.rev),exp=0;BCATS.forEach(x=>{exp+=sum(cats[x[0]])});
+ const cols=ed?3:2;
+ const cell=(sec,i,r,auto)=>`<tr>
+  <td>${ed?`<input value="${es(r.label)}" placeholder="รายการ..." ${auto?'readonly style="font-weight:600"':''} oninput="bSet('${sec}',${i},'label',this.value)">`:(es(r.label)||'—')}</td>
+  <td class="r">${ed?`<input class="n${auto?' auto':''}"${auto?` id="bAuto_${sec}"`:''} value="${r.amount?mn(r.amount):''}" ${auto?'readonly title="คำนวณอัตโนมัติจากยอดรายรับ"':'inputmode="decimal" placeholder="0.00"'} oninput="bSet('${sec}',${i},'amount',this.value);bSync()" onblur="bPaint()">`:mn(r.amount)}</td>
+  ${ed?`<td style="width:30px;text-align:center">${auto?'':`<b style="cursor:pointer;color:var(--bad)" title="ลบรายการ" onclick="bDel('${sec}',${i})">×</b>`}</td>`:''}</tr>`;
+ let h=`<div style="overflow-x:auto"><table class="bt"><thead><tr><th>รายละเอียด</th><th class="r">จำนวนเงิน (บาท)</th>${ed?'<th></th>':''}</tr></thead><tbody>`;
+ h+=`<tr class="h"><td colspan="${cols}">ประมาณการรายรับ (ทุกแหล่งงบประมาณ)</td></tr>`;
+ (bd.rev||[]).forEach((r,i)=>{h+=cell('rev',i,r,false)});
+ if(ed)h+=`<tr><td colspan="${cols}" style="padding:4px 7px"><button type="button" class="btn g s" onclick="bAdd('rev')">＋ เพิ่มแหล่งรายรับ</button></td></tr>`;
+ h+=`<tr class="s"><td>รวมประมาณการรายรับ</td><td class="r"><span id="bTotRev">${mn(rev)}</span></td>${ed?'<td></td>':''}</tr>`;
+ h+=`<tr class="h"><td colspan="${cols}">ประมาณการรายจ่าย</td></tr>`;
+ BCATS.forEach(x=>{
+  const k=x[0],isAuto=(BAUTO[k]!==undefined)&&!!bd.auto;
+  const rows=cats[k]||[];
+  if(!ed&&!rows.length)return;
+  h+=`<tr class="c"><td colspan="${cols}">${x[1]}</td></tr>`;
+  rows.forEach((r,i)=>{h+=cell(k,i,r,isAuto&&i===0)});
+  if(ed&&!isAuto)h+=`<tr><td colspan="${cols}" style="padding:4px 7px"><button type="button" class="btn g s" onclick="bAdd('${k}')">＋ เพิ่มรายการ</button></td></tr>`;
+  h+=`<tr class="s"><td style="text-align:right">รวม${x[1].replace(/^\d+\.\s*/,'')}</td><td class="r"><span id="bSub_${k}">${mn(sum(rows))}</span></td>${ed?'<td></td>':''}</tr>`;
+ });
+ h+=`<tr class="t"><td>รวมประมาณการรายจ่ายทั้งสิ้น</td><td class="r"><span id="bTotExp">${mn(exp)}</span></td>${ed?'<td></td>':''}</tr>`;
+ h+=`<tr class="s"><td>รายรับเหนือรายจ่าย (รายรับ − รายจ่าย)</td><td class="r"><span id="bTotNet">${mn(rev-exp)}</span></td>${ed?'<td></td>':''}</tr>`;
+ h+='</tbody></table></div>';
+ if(ed)h+=`<label style="display:flex;gap:9px;align-items:flex-start;margin-top:11px;font-size:13px;cursor:pointer">
+  <input type="checkbox" ${bd.auto?'checked':''} onchange="bAutoTgl(this.checked)" style="margin-top:4px">
+  <span>คำนวณหมวด 4–6 ให้อัตโนมัติจากยอดรายรับ (สาธารณูปโภค 5% · เงินอุดหนุน 10% · เงินสำรองทั่วไป 5%)<br><span style="font-size:12.5px;color:var(--ink2)">ถ้าโครงการนี้ไม่ต้องหักตามอัตรานี้ ให้เอาเครื่องหมายถูกออก แล้วกรอกเองได้</span></span></label>`;
+ return h;
+}
+let B_LOCK=false;
+/* ดึงตารางงบประมาณรายหมวดของโครงการเป็นไฟล์ Excel (CSV) */
+function exportBudgetCSV(id){
+ const p=gid(id);
+ if(!p||!bHasData(p.budget))return toast('โครงการนี้ยังไม่ได้กรอกตารางงบประมาณรายหมวด');
+ const bd=p.budget,rows=[],cs=bd.cats||{};
+ let rev=0,exp=0;
+ (bd.rev||[]).forEach(r=>{rev+=bNum(r.amount);rows.push(['ประมาณการรายรับ',r.label,bNum(r.amount).toFixed(2)])});
+ rows.push(['','รวมประมาณการรายรับ',rev.toFixed(2)]);
+ BCATS.forEach(x=>{const a=cs[x[0]]||[];if(!a.length)return;
+  let st=0;a.forEach(r=>{st+=bNum(r.amount);rows.push([x[1],r.label,bNum(r.amount).toFixed(2)])});
+  exp+=st;rows.push(['','รวม'+x[1].replace(/^\d+\.\s*/,''),st.toFixed(2)]);});
+ rows.push(['','รวมประมาณการรายจ่ายทั้งสิ้น',exp.toFixed(2)]);
+ rows.push(['','รายรับเหนือรายจ่าย',(rev-exp).toFixed(2)]);
+ downloadCSV('งบประมาณรายหมวด_'+p.code+'_'+FY+'.csv',['หมวด','รายการ','จำนวนเงิน (บาท)'],rows);
+}
+/* ตารางงบรายหมวดแก้ไขได้เสมอ แม้โครงการอนุมัติแล้ว — เป็นการแจกแจงยอดที่อนุมัติไว้
+   ไม่ได้เปลี่ยนยอดงบที่อนุมัติ (ช่องงบประมาณถูกล็อกไว้อยู่แล้วเมื่อสถานะอนุมัติ/ปิด) */
+function bPaint(){const x=$('bBox');if(x){bApplyAuto();x.innerHTML=bTable(B,true);bSync();}}
+
+/* กล่องส่วนขยายท้ายฟอร์มเขียนโครงการ */
+function ofHtml(p){
+ const gOpen=gtHasData(p&&p.gantt), bOpen=bHasData(p&&p.budget);
+ return `
+ <div style="border-top:1px dashed var(--line2);margin:20px 0 12px;padding-top:15px;font-weight:600;color:var(--navy)">ส่วนเพิ่มเติมตามแบบข้อเสนอขอโครงการ (ฉบับทางการ)</div>
+ <div class="note i" style="margin-bottom:14px"><b>ไม่บังคับ</b> — สองตารางนี้ใช้สำหรับพิมพ์ <b>แบบข้อเสนอขอโครงการ</b> ฉบับทางการ ถ้ายังไม่กรอก ระบบและรายงานทุกตัวทำงานได้ปกติทั้งหมด<br><b>โครงการที่เสนอหรืออนุมัติไปแล้ว เข้ามาเติมตรงนี้ภายหลังได้ทุกเมื่อ</b> — การกรอกตารางงบรายหมวดเป็นการแจกแจงยอดที่อนุมัติไว้ ไม่ทำให้ยอดงบที่อนุมัติเปลี่ยน</div>
+ <div class="bx"><div class="bh" onclick="bxT(this)"><span>📅 ขั้นตอนการดำเนินงาน (ตารางรายเดือน)</span><small class="bxc">${gOpen?'▴ ย่อเก็บ':'▾ กางออก'}</small></div>
+  <div class="bb" id="gtBox" style="display:${gOpen?'block':'none'}"></div></div>
+ <div class="bx"><div class="bh" onclick="bxT(this)"><span>💰 งบประมาณรายรับ–รายจ่าย แยกหมวด</span><small class="bxc">${bOpen?'▴ ย่อเก็บ':'▾ กางออก'}</small></div>
+  <div class="bb" id="bBox" style="display:${bOpen?'block':'none'}"></div></div>
+ <div class="bx"><div class="bh" onclick="bxT(this)"><span>📝 หมายเหตุ (การถัวจ่าย / การนำส่งรายรับเหนือรายจ่าย)</span><small class="bxc">▾ กางออก</small></div>
+  <div class="bb" style="display:none"><textarea id="bNote" rows="4" style="min-height:96px;width:100%" oninput="bNoteSet(this.value)"></textarea>
+  <div class="hint">ข้อความตั้งต้นเป็นไปตามแบบฟอร์มทางการ แก้ไขได้</div></div></div>`;
+}
+
 function openNew(id){
  if(!id&&!isOpen(FY)){toast('ยังไม่เปิดรับข้อเสนอโครงการปีงบประมาณ '+FY);return}
  const p=id?gid(id):null;
@@ -4616,6 +5056,10 @@ function openNew(id){
  const V=(k,d='')=>p&&p[k]!=null?es(p[k]):d;
  $('mdB').innerHTML=`
   <div class="f"><label>ชื่อโครงการ <i>*</i></label><input id="fn" value="${V('name')}" placeholder="เช่น โครงการอบรมจริยธรรมการใช้สัตว์ทดลอง"></div>
+  <div class="gr g2">
+   <div class="f"><label>ลักษณะโครงการ</label><select id="fptype">${['','โครงการใหม่','โครงการต่อเนื่อง'].map(x=>`<option value="${x}" ${(p&&p.projType||'')===x?'selected':''}>${x||'— ยังไม่ระบุ —'}</option>`).join('')}</select></div>
+   <div class="f"><label>แหล่งงบประมาณ</label><input id="ffund" value="${V('fundSource')}" placeholder="เช่น เงินรายได้ศูนย์สัตว์ทดลอง"></div>
+  </div>
   ${(ROLE==='sec'&&p)?`<div class="f"><label>รหัสโครงการ <span style="font-weight:400;color:var(--ink3)">(แก้ไขได้เฉพาะเลขานุการ — ใช้แก้กรณีเลขที่ซ้ำ/ผิดพลาด)</span></label><input id="fcode" value="${es(p.code)}" style="font-weight:600;color:var(--accent2)"></div>`:''}
   <div class="f"><label>หลักการและเหตุผล</label><textarea id="frat" rows="5" style="min-height:120px">${V('rationale')}</textarea></div>
   <div class="f"><label>วัตถุประสงค์ <i>*</i></label><textarea id="fob" rows="5" style="min-height:120px">${V('objective')}</textarea></div>
@@ -4624,15 +5068,20 @@ function openNew(id){
    <div class="f"><label>จำนวนผู้เข้าร่วมโครงการ</label><input id="fpart" value="${V('participants')}" placeholder="เช่น 160 คน"></div>
    <div class="f"><label>กำหนดวันจัดโครงการ</label><input id="fdate" value="${V('eventDate')}" placeholder="เช่น พ.ย. 2569 – มิ.ย. 2570"></div>
   </div>
+  <div class="gr g2">
+   <div class="f"><label>วันเริ่มโครงการ</label><input type="date" id="fsd" value="${V('startDate')}"><div class="hint">เลือกจากปฏิทิน — ใช้ในแบบฟอร์มทางการ (ข้อ 8 ระยะเวลาดำเนินการ)</div></div>
+   <div class="f"><label>วันสิ้นสุดโครงการ</label><input type="date" id="fed" value="${V('endDate')}"></div>
+  </div>
   <div class="f"><label>ผู้รับผิดชอบโครงการ (ประธาน) <i>*</i></label>
     <div style="display:flex;gap:8px"><select id="fo" style="flex:1">${opts}</select><button class="btn g s" onclick="quickAddPerson()" style="flex:0 0 auto">＋ เพิ่มชื่อ</button></div></div>
+  <div class="f"><label>ตำแหน่งหัวหน้าโครงการ</label><input id="fotitle" value="${V('ownerTitle')}" placeholder="เช่น หัวหน้างานบริหารทั่วไปและซ่อมบำรุง"></div>
   <div class="f"><label>ผู้ร่วมโครงการ (เลือกได้หลายคน — ดูข้อมูลได้ ผู้รับผิดชอบหลักเป็นผู้กรอกรายงาน)</label>
     <div style="display:flex;gap:8px"><select id="fteamPick" style="flex:1"><option value="">— เลือกผู้ร่วมโครงการ —</option>${teamPickOpts}</select><button type="button" class="btn g s" onclick="addTeamMember()" style="flex:0 0 auto">＋ เพิ่ม</button></div>
     <div id="fteamChips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px"></div>
     <div class="hint">เลือกชื่อแล้วกด “เพิ่ม” · เลือกได้หลายคน</div></div>
   <div class="f"><label>สถานที่จัดโครงการ</label><input id="floc" value="${V('location')}" placeholder="เช่น ห้องประชุมศูนย์สัตว์ทดลอง"></div>
   <div class="gr g2">
-   <div class="f"><label>งบประมาณ (บาท) <i>*</i></label><input type="number" id="fb" min="0" step="100" value="${p?p.budgetRequested:''}" placeholder="เช่น 300000 (ใส่ 0 ได้ถ้าไม่มีค่าใช้จ่าย)" style="text-align:right;font-weight:600" ${locked?'disabled':''}></div>
+   <div class="f"><label>งบประมาณ (บาท) <i>*</i></label><input type="number" id="fb" min="0" step="100" value="${p?p.budgetRequested:''}" placeholder="เช่น 300000 (ใส่ 0 ได้ถ้าไม่มีค่าใช้จ่าย)" style="text-align:right;font-weight:600" ${locked?'disabled':''}><div class="hint" id="fbHint">ถ้ากรอกตารางงบประมาณรายหมวดด้านล่าง ระบบจะคำนวณยอดนี้ให้อัตโนมัติ</div></div>
    <div class="f"><label>จำนวนครั้งที่จัด <i>*</i></label><input type="number" id="ftimes" min="1" step="1" value="${p&&p.times?p.times:'1'}" style="text-align:right" ${locked?'disabled':''}><div class="hint">จัดครั้งเดียว เช่น งานปีใหม่ ใส่ 1</div></div>
   </div>
   ${locked?'<div class="note i">งบประมาณและจำนวนครั้งถูกล็อกตามมติที่ประชุมแล้ว แก้ไขได้เฉพาะรายละเอียดอื่น ๆ — หากต้องเปลี่ยนงบ/จำนวนครั้ง ต้องเสนอที่ประชุมพิจารณาใหม่</div>':''}
@@ -4644,6 +5093,10 @@ function openNew(id){
     <div style="margin-top:6px;display:grid;gap:5px">${Object.entries(KPIS).filter(([k])=>k!=='NA').map(([k,v])=>`<div style="display:flex;gap:8px;align-items:flex-start"><span class="kpi" style="flex:0 0 auto">${k}</span><span style="font-size:13px">${es(v)}</span></div>`).join('')}</div></div>
    <select id="fk" ${locked?'disabled':''}>${Object.entries(KPIS).map(([k,v])=>`<option value="${k}" ${p&&p.kpi===k?'selected':''}>${k==='NA'?'ยังไม่ระบุ':k+' — '+v}</option>`).join('')}</select></div>
   <div class="f"><label>ตัวชี้วัดความสำเร็จของโครงการ (วัดผลอย่างไรว่าโครงการสำเร็จ)</label><textarea id="ftg" rows="4" style="min-height:96px" placeholder="เช่น ผู้เข้าอบรมผ่านการประเมินไม่น้อยกว่าร้อยละ 80">${V('target')}</textarea></div>`;
+ $('mdB').insertAdjacentHTML('beforeend',ofHtml(p));
+ B_LOCK=locked;
+ gtInit(p);bInit(p);gtPaint();bPaint();
+ if($('bNote'))$('bNote').value=B.note||'';
  renderTeamChips();
  const saveLabel=(!p||p.status==='draft')?'💾 บันทึกร่าง':'💾 บันทึกการแก้ไข';
  const submitLabel=(p&&p.status==='revise')?'ส่งโครงการอีกครั้ง':'ส่งเสนอโครงการ';
@@ -4692,9 +5145,14 @@ function saveP(id,submit){
   if(!name)return toast('กรุณาตั้งชื่อโครงการอย่างน้อย เพื่อบันทึกร่างไว้ก่อน');
  }
  const team=TEAM_SEL.slice();
+ const gs=i=>{const e=$(i);return e?String(e.value||'').trim():'';};
  const data={name,rationale:g('frat'),objective:obj,method:g('fmeth'),participants:g('fpart'),
   eventDate:g('fdate'),owner:$('fo').value,location:g('floc'),benefit:g('fben'),
-  target:g('ftg'),team};
+  target:g('ftg'),team,
+  /* ---- ส่วนเพิ่มเติมตามแบบข้อเสนอขอโครงการ (ทุกช่องไม่บังคับ) ---- */
+  projType:gs('fptype'),fundSource:gs('ffund'),ownerTitle:gs('fotitle'),
+  startDate:gs('fsd'),endDate:gs('fed'),
+  gantt:gtClean(),budget:bClean()};
  if(!locked){Object.assign(data,{budgetRequested:bud,times,kpi:$('fk').value});if(submit)data.status='submitted';}
  let savedId=id;
  if(id){
